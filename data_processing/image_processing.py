@@ -1,49 +1,82 @@
 import os
-from azureml.core import Dataset, Workspace
-import tensorflow as tf
-from tensorflow.keras import layers, models, backend as K
+from pathlib import Path
 
+import tensorflow as tf
+from tensorflow.keras import backend as K #layers, models
+
+
+
+
+def load_paths(directory):
+    full_paths=[]
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            full_path = os.path.abspath(os.path.join(root, file))
+            full_paths.append(full_path)
+    return full_paths
+
+
+
+
+def find_project_root(current_path, marker_file="README.md"):
+    current_path = Path(current_path).resolve()
+    while current_path != current_path.root:
+        if (current_path / marker_file).exists():
+            return current_path
+        current_path = current_path.parent
+    raise FileNotFoundError(f"Root directory containing {marker_file} not found.")
+
+    
 
 
 def get_datasets():
+    # Example usage
+    cwd = Path.cwd()
+    project_root = find_project_root(cwd)  # Or pass the current directory as Path.cwd()
     
-    # Connect to your workspace
-    ws = Workspace.from_config()
-
-    # Dictionary to store datasets and their mount points
     datasets_paths = {}
     mount_points = {}
     
-    # List of dataset names
+    # # List of dataset names
     dataset_names = [
-        ["segmentation_images_train", "train"],
-        ["segmentation_masks_train", "_gtFine_labelIds.png"],
-        ["segmentation_images_val", "val"],
-        ["segmentation_masks_val", "_gtFine_labelIds.png"],
+        "segmentation_images_train",
+        "segmentation_masks_train",
+        "segmentation_images_val",
+        "segmentation_masks_val",
     ]
-    # Mount each dataset
-    for name in dataset_names:
-        dataset = Dataset.get_by_name(ws, name[0])
-        mount_point = dataset.mount()
-        mount_point.start()
 
-        paths = dataset.to_path()
-
-        if name[1] == "_gtFine_labelIds.png":
-            paths = [p for p in paths if name[1] in p]  
-        datasets_paths[name[0]] = [os.path.join(mount_point.mount_point, path.lstrip("/")) for path in paths]
-        mount_points[name[0]] = mount_point
-        print(f"Dataset '{name}' mounted at '{mount_point.mount_point}'")
-    return datasets_paths, mount_points
+    root_train_images_path = project_root / 'data/processed/train/images'
+    train_images_paths = load_paths(root_train_images_path)
+    datasets_paths[dataset_names[0]] = train_images_paths
+    
+    root_train_masks_path = project_root / 'data/processed/train/masks'
+    train_masks_paths = load_paths(root_train_masks_path)
+    train_masks_paths = [msk for msk in train_masks_paths if "_labelIds.png" in msk]
+    datasets_paths[dataset_names[1]] = train_masks_paths
+    
+    root_valid_images_path = project_root / 'data/processed/valid/images'
+    valid_images_paths = load_paths(root_valid_images_path)
+    datasets_paths[dataset_names[2]] = valid_images_paths
+    
+    root_valid_masks_path = project_root / 'data/processed/valid/masks'
+    valid_masks_paths = load_paths(root_valid_masks_path)
+    valid_masks_paths = [msk for msk in valid_masks_paths if "_labelIds.png" in msk]
+    datasets_paths[dataset_names[3]] = valid_masks_paths
+    
+    return datasets_paths    
 
 
 
 
 def check_paths(imgs, msks):
+    
     for pair in zip(imgs, msks): 
         img_pth = pair[0].split("/")[-1].split("_")
         msk_pth = pair[0].split("/")[-1].split("_")
         assert img_pth == msk_pth, f"Paths of image {pair[0]} and mask {pair[1]} do not match"
+    
+    assert len(imgs) == len(msks), f"Number of images {len(imgs)} does not match the number of masks {len(msks)}"
+    
     return "Paths are correct - check passed"    
 
 
@@ -63,7 +96,7 @@ def read_label(file_path):
     label = tf.io.read_file(file_path)
     label = tf.image.decode_image(label, channels=1)
     label = tf.image.convert_image_dtype(label, tf.uint8)
-    label.set_shape([1024, 2048])
+    label.set_shape([1024, 2048, 1])
     return label
 
 
@@ -206,11 +239,11 @@ def augment_image_and_label(image, label, augment_prob=0.3):
 
 
 
-def load_dataset_unet(batch_size=2):
+def load_dataset_unet(batch_size=1):
     
     # Get full paths for images and masks
-    datasets, mount_points = get_datasets()
-
+    datasets = get_datasets()
+    
     train_image_paths = datasets["segmentation_images_train"]
     train_mask_paths = datasets["segmentation_masks_train"]
     
@@ -254,35 +287,35 @@ def load_dataset_unet(batch_size=2):
     dataset_train = dataset_train.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     dataset_valid = dataset_valid.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     
-    return dataset_train, dataset_valid, mount_points
-
-
-
-
-def resize_images(image, label):
-
-    image = tf.image.resize(image, size=[512, 1024], method=tf.image.ResizeMethod.BILINEAR)
-
-    label = tf.image.resize(label, size=[128, 256], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    label = tf.image.convert_image_dtype(label, tf.uint8)
-
-    image = tf.transpose(image, perm=[2, 0, 1])
-    output_mask = tf.transpose(label, perm=[2, 0, 1])
-
-    output_image = tf.image.convert_image_dtype(image, tf.float32)
-    output_image = tf.clip_by_value(output_image, clip_value_min=0.0, clip_value_max=1.0)
+    return dataset_train, dataset_valid
+    # return train_image_paths, train_mask_paths, val_image_paths, val_mask_paths
     
-    return output_image, output_mask
+
+
+# def resize_images(image, label):
+
+#     image = tf.image.resize(image, size=[512, 1024], method=tf.image.ResizeMethod.BILINEAR)
+
+#     label = tf.image.resize(label, size=[128, 256], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+#     label = tf.image.convert_image_dtype(label, tf.uint8)
+
+#     image = tf.transpose(image, perm=[2, 0, 1])
+#     output_mask = tf.transpose(label, perm=[2, 0, 1])
+
+#     output_image = tf.image.convert_image_dtype(image, tf.float32)
+#     output_image = tf.clip_by_value(output_image, clip_value_min=0.0, clip_value_max=1.0)
+    
+#     return output_image, output_mask
 
 
 
 
-def load_dataset_segf(dataset, batch_size=2):
+# def load_dataset_segf(dataset, batch_size=2):
 
-    # Parse the serialized examples
-    dataset = dataset.map(normalize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+#     # Parse the serialized examples
+#     dataset = dataset.map(normalize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.map(augment_image_and_label, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.batch(batch_size, drop_remainder=True)
-    dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    return dataset
+#     dataset = dataset.map(augment_image_and_label, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+#     dataset = dataset.batch(batch_size, drop_remainder=True)
+#     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+#     return dataset

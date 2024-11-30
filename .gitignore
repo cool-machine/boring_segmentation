@@ -16,7 +16,8 @@ data
 __init__
 *pyc*
 __others
-
+*env*
+*config*
 # C extensions
 *.so
 
