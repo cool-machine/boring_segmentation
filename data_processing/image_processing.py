@@ -30,14 +30,15 @@ def find_project_root(current_path, marker_file="README.md"):
 
 
 def get_datasets():
-    # Example usage
+    
+    
     cwd = Path.cwd()
-    project_root = find_project_root(cwd)  # Or pass the current directory as Path.cwd()
+    project_root = find_project_root(cwd)
     
     datasets_paths = {}
     mount_points = {}
     
-    # # List of dataset names
+    # List of dataset names
     dataset_names = [
         "segmentation_images_train",
         "segmentation_masks_train",

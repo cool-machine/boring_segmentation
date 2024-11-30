@@ -2,7 +2,7 @@
 import os
 import sys
 import keras
-import mlflow
+
 
 # Dynamically add the `img_segmentation` root directory to `sys.path`
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -11,20 +11,18 @@ if root_dir not in sys.path:
 
 print(f"this is a root directory: {root_dir}")
 
-
 from data_processing.image_processing import load_dataset_unet
 from callbacks.callbacks import keras_callbacks, PlotResultsCallback
 from custom_metrics.custom_metrics import iou, dice_coefficient
 from model_definitions.unet import unet_with_vgg16_encoder
-from utils.utils import keras_optimizer, get_mlflow_uri
+from utils.utils import keras_optimizer, get_mlflow_url
 
 
 
 # define functions
 def main():
 
-    keras.backend.clear_session()
-    
+    keras.backend.clear_session()    
     mlflow_tracking_uri = get_mlflow_uri()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
@@ -50,15 +48,15 @@ def main():
               loss='sparse_categorical_crossentropy',
               metrics=metrics)
 
-    mlflow.keras.autolog()
-    
+
     with mlflow.start_run():
+        mlflow.keras.autolog()
         
-        history = model.fit(
-                        dataset_train.take(1),
-                        validation_data=dataset_val.take(1),
-                        epochs=2,
-                        callbacks=callbacks)
+    history = model.fit(
+                    dataset_train.take(1),
+                    validation_data=dataset_val.take(1),
+                    epochs=2,
+                    callbacks=callbacks)
 
 
 # run script
@@ -74,4 +72,4 @@ if __name__ == "__main__":
     # add space in logs
     print("*" * 60)
     print("\n\n")
-    print("all gone well")
+    

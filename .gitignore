@@ -9,6 +9,9 @@ __pycache__/
 *amltmp*
 *.amltemp
 data
+main-copy.ipynb
+
+
 .amlignore
 *weights.66*
 *-copy*
