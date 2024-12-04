@@ -1,4 +1,5 @@
-# Four callbacks for plotting, early stopping, learning rate decay, and checkpointing 
+# Four callbacks for plotting, early stopping, learning rate decay and 
+# two checkpointing (one top and one top k models) 
 
 import os
 import keras
@@ -159,7 +160,7 @@ class CustomHistory(Callback):
 
 
 
-def keras_callbacks(lr_patience=10,
+def unet_callbacks(lr_patience=10,
                     es_patience=15):
 
     # Define the ReduceLROnPlateau callback
@@ -182,26 +183,26 @@ def keras_callbacks(lr_patience=10,
         restore_best_weights=True
     )
 
-    # Define the directory for saving checkpoints
-    checkpoint_path = './outputs/checkpoints'
-    os.makedirs(checkpoint_path, exist_ok=True)
-    checkpoint_path = os.path.join(checkpoint_path, 'model-{epoch:03d}-{val_loss:.2f}.keras')
-    model_checkpoint = ModelCheckpoint(
-        filepath=checkpoint_path,
-        monitor='val_loss',
-        save_best_only=True,
-        save_weights_only=False,
-        mode='auto',
-        save_freq='epoch',
-        verbose=1,
-    )
+    # # Define the directory for saving checkpoints
+    # checkpoint_path = './outputs/checkpoints'
+    # os.makedirs(checkpoint_path, exist_ok=True)
+    # checkpoint_path = os.path.join(checkpoint_path, 'model-{epoch:03d}-{val_loss:.2f}.keras')
+    # model_checkpoint = ModelCheckpoint(
+    #     filepath=checkpoint_path,
+    #     monitor='val_loss',
+    #     save_best_only=True,
+    #     save_weights_only=False,
+    #     mode='auto',
+    #     save_freq='epoch',
+    #     verbose=1,
+    # )
 
     # Define the directory to save models
-    checkpoint_dir = './outputs/best_few_top_models'
+    checkpoint_dir = './outputs/top_k_models'
     os.makedirs(checkpoint_dir, exist_ok=True)
     filepath = os.path.join(checkpoint_dir,'model-epoch{epoch:02d}-{val_loss:.4f}.keras')
     # Create an instance of the custom callback
-    top_k_checkpoint = TopKModelCheckpoint(
+    top_k_checkpoints = TopKModelCheckpoint(
         filepath=filepath,
         monitor='val_loss',
         mode='min',  # Assuming lower validation loss is better
@@ -210,4 +211,4 @@ def keras_callbacks(lr_patience=10,
     
     custom_history = CustomHistory()
 
-    return early_stop, model_checkpoint, reduce_lr, custom_history, top_k_checkpoint
+    return early_stop, reduce_lr, custom_history, top_k_checkpoints

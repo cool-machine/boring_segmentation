@@ -2,8 +2,9 @@ import keras
 from keras.applications import VGG16
 from keras import layers, models
 
-# Define the U-Net model with VGG16 encoder
-def unet_with_vgg16_encoder(input_shape, num_classes):
+# Define the U-Net model with VGG16 encoder 
+
+def unet_with_vgg16_encoder(input_shape=(1024,2048,3), num_classes=8):
     inputs = keras.Input(input_shape)
 
     # Load VGG16 with pre-trained weights and exclude the top fully connected layers
