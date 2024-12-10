@@ -180,7 +180,7 @@ def unet_callbacks(lr_patience=10,
         monitor='val_loss',
         patience=es_patience,
         verbose=1,
-        restore_best_weights=True
+        restore_best_weights=True,
     )
 
     # # Define the directory for saving checkpoints

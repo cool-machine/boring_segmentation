@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from data_processing.load_data_paths import get_datasets
+from data.data_processing.load_data_paths import get_datasets
 
 
 
@@ -106,7 +106,7 @@ def map_labels_tf(label_image, original_classes, class_mapping, new_labels):
     for original_class, new_class in class_mapping.items():
         original_class_index = tf.cast(original_classes.index(original_class), tf.uint8)
         new_class_index = tf.cast(new_labels[new_class], tf.uint8)
-        mask = tf.equal(label_image, original_class_index)
+        mask = tf.equal(tf.cast(label_image,tf.int32), tf.cast(original_class_index, tf.int32))
         fill_val = tf.fill(label_image_shape, tf.cast(new_class_index, tf.uint8))  
         mapped_label_image = tf.where(mask, fill_val, mapped_label_image)
     label = tf.expand_dims(mapped_label_image, axis=-1)  # Add back the last dimension
@@ -188,8 +188,8 @@ def load_dataset_unet(batch_size=1):
     train_image_paths = datasets["segmentation_images_train"]
     train_mask_paths = datasets["segmentation_masks_train"]
     
-    val_image_paths = datasets["segmentation_images_val"]
-    val_mask_paths = datasets["segmentation_masks_val"]
+    val_image_paths = datasets["segmentation_images_valid"]
+    val_mask_paths = datasets["segmentation_masks_valid"]
     
     # Create a dataset from the tuples of (image_path, mask_path)
     dataset_train = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mask_paths))
@@ -228,12 +228,9 @@ def load_dataset_unet(batch_size=1):
     dataset_train = dataset_train.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     dataset_valid = dataset_valid.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     
-    dataset = dict(train=dataset_train, valid=dataset_valid, test=dataset_test)
-
-    return dataset
+    return dataset_train, dataset_valid
     
     
-
 
 def load_dataset_segf(batch_size=2):
 
@@ -243,8 +240,8 @@ def load_dataset_segf(batch_size=2):
     train_image_paths = datasets["segmentation_images_train"]
     train_mask_paths = datasets["segmentation_masks_train"]
     
-    val_image_paths = datasets["segmentation_images_val"]
-    val_mask_paths = datasets["segmentation_masks_val"]
+    val_image_paths = datasets["segmentation_images_valid"]
+    val_mask_paths = datasets["segmentation_masks_valid"]
 
     # Create a dataset from the tuples of (image_path, mask_path)
     dataset_train = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mask_paths))

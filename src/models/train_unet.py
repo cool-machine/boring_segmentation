@@ -10,11 +10,11 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 print(f"this is a root directory: {root_dir}")
 
-from data_processing.data_processing import load_dataset_unet
-from callbacks.metrics.callbacks import keras_callbacks, PlotResultsCallback
-from custom_metrics.custom_metrics import iou, dice_coefficient
-from model_definitions.unet import unet_with_vgg16_encoder
-from utils.model_architecture_search import unet_optimizer
+from data.data_processing.data_processing import load_dataset_unet
+from metrics.callbacks import unet_callbacks, PlotResultsCallback
+from metrics.custom_metrics import iou, dice_coefficient
+from model_architecture_search.unet_model import unet_with_vgg16_encoder
+from model_architecture_search.optimizers import unet_optimizer
 from logs.mlflow.mlflow_functions import get_mlflow_uri
 
 
@@ -33,19 +33,21 @@ def main():
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     # set_tracking_uri()
     
-    dataset = load_dataset_unet(batch_size=1)
+    dataset_train, dataset_val = load_dataset_unet(batch_size=1)
 
     # Create an experiment in Azure ML
-    experiment_name = "unet_experiment_v1"
+    experiment_name = "unet_experiment_v101"
     mlflow.set_experiment(experiment_name)
     
-
-    early_stop, reduce_lr, custom_history, top_k_checkpoint = unet_callbacks()
+    early_stop, reduce_lr, custom_history, top_k_checkpoints = unet_callbacks()
+    
     plot_callback=PlotResultsCallback(validation_data=dataset_val)
 
-    callbacks = [early_stop, reduce_lr, plot_callback, custom_history,top_k_checkpoint]
+    callbacks = [early_stop, reduce_lr, plot_callback, custom_history,top_k_checkpoints]
     metrics = [dice_coefficient, iou, 'accuracy']
-
+    
+    input_shape = (1024, 2048, 3)
+    num_classes = 8
     model = unet_with_vgg16_encoder(input_shape, num_classes)
     optimizer = unet_optimizer()
 
@@ -54,15 +56,15 @@ def main():
               loss='sparse_categorical_crossentropy',
               metrics=metrics)
 
+
     with mlflow.start_run():
         mlflow.keras.autolog()
         
         history = model.fit(
                     dataset_train.take(1),
                     validation_data=dataset_val.take(1),
-                    epochs=2,
+                    epochs=5,
                     callbacks=callbacks)
-
 
 
 
