@@ -12,9 +12,6 @@ __pycache__/
 *.amltemp
 main-copy.ipynb
 
-dataset
-dataset*
-*dataset*
 
 data
 !data_processing
