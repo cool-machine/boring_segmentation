@@ -20,7 +20,7 @@ dataset*
 data
 *data*
 data*
-
+!data_processing
 
 .amlignore
 *weights.66*
