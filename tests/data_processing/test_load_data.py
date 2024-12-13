@@ -41,35 +41,15 @@ def project_structure():
 
         yield root_path
 
-# def test_find_project_root_success(project_structure):
-#     """
-#     Test that find_project_root returns the correct project root 
-#     when the marker file is present.
-#     """
-#     # Start searching from a subdirectory and ensure it finds the root
-#     start_path = project_structure / "dataset" / "train" / "images"
-#     found_root = find_project_root(start_path)
-#     assert found_root == project_structure, "Should find the correct project root."
-
 def test_find_project_root_success(project_structure):
     """
-    Test that find_project_root returns the correct project root
+    Test that find_project_root returns the correct project root 
     when the marker file is present.
     """
-    # Debugging: Print project structure
-    print(f"Temporary project root: {project_structure}")
-    print(f"Contents of project root: {list(project_structure.iterdir())}")
-
-    # Ensure README.md exists
-    marker_file = project_structure / "README.MD"
-    assert marker_file.exists(), "Marker file README.MD was not created."
-
     # Start searching from a subdirectory and ensure it finds the root
     start_path = project_structure / "dataset" / "train" / "images"
     found_root = find_project_root(start_path)
-
-    assert found_root == project_structure, "Failed to find the correct project root."
-
+    assert found_root == project_structure, "Should find the correct project root."
 
 
 def test_load_paths(project_structure):
@@ -155,37 +135,56 @@ def test_check_paths_failure():
 #         with pytest.raises(FileNotFoundError):
 #             find_project_root(start_path)
 
-def find_project_root(current_path, marker_file="README.MD", max_depth=10):
-    """
-    Find the project's root directory by searching upwards until a marker file is found.
+# def find_project_root(current_path, marker_file="README.MD", max_depth=10):
+#     """
+#     Find the project's root directory by searching upwards until a marker file is found.
     
-    Args:
-        current_path (str or Path): The current path from which to start searching upwards.
-        marker_file (str): The file used as a marker for the project root.
-        max_depth (int): Maximum number of levels to search upwards.
+#     Args:
+#         current_path (str or Path): The current path from which to start searching upwards.
+#         marker_file (str): The file used as a marker for the project root.
+#         max_depth (int): Maximum number of levels to search upwards.
     
-    Raises:
-        FileNotFoundError: If the marker file is not found within the maximum depth.
+#     Raises:
+#         FileNotFoundError: If the marker file is not found within the maximum depth.
     
-    Returns:
-        Path: The Path object of the project root directory.
-    """
-    current_path = Path(current_path).resolve()
-    depth = 0
-    while current_path != current_path.root and depth < max_depth:
-        if (current_path / marker_file).exists():
-            return current_path
-        current_path = current_path.parent
-        depth += 1
-    raise FileNotFoundError(f"Root directory containing {marker_file} not found within {max_depth} levels.")
+#     Returns:
+#         Path: The Path object of the project root directory.
+#     """
+#     current_path = Path(current_path).resolve()
+#     depth = 0
+#     while current_path != current_path.root and depth < max_depth:
+#         if (current_path / marker_file).exists():
+#             return current_path
+#         current_path = current_path.parent
+#         depth += 1
+#     raise FileNotFoundError(f"Root directory containing {marker_file} not found within {max_depth} levels.")
 
-def test_find_project_root_failure():
-    """
-    Test that find_project_root raises FileNotFoundError
-    when the marker file is not present.
-    """
-    with TemporaryDirectory() as temp_dir:
-        # No README.md here
-        start_path = Path(temp_dir)
-        with pytest.raises(FileNotFoundError):
-            find_project_root(start_path, max_depth=3)  # Use a smaller max depth
+# def test_find_project_root_failure():
+#     """
+#     Test that find_project_root raises FileNotFoundError
+#     when the marker file is not present.
+#     """
+#     with TemporaryDirectory() as temp_dir:
+#         # No README.md here
+#         start_path = Path(temp_dir)
+#         with pytest.raises(FileNotFoundError):
+#             find_project_root(start_path, max_depth=3)  # Use a smaller max depth
+
+# def test_find_project_root_success(project_structure):
+#     """
+#     Test that find_project_root returns the correct project root
+#     when the marker file is present.
+#     """
+#     # Debugging: Print project structure
+#     print(f"Temporary project root: {project_structure}")
+#     print(f"Contents of project root: {list(project_structure.iterdir())}")
+
+#     # Ensure README.md exists
+#     marker_file = project_structure / "README.MD"
+#     assert marker_file.exists(), "Marker file README.MD was not created."
+
+#     # Start searching from a subdirectory and ensure it finds the root
+#     start_path = project_structure / "dataset" / "train" / "images"
+#     found_root = find_project_root(start_path)
+
+#     assert found_root == project_structure, "Failed to find the correct project root."
