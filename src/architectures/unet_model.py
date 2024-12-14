@@ -2,29 +2,38 @@ import keras
 from keras.applications import VGG16
 from keras import layers, models, Input
 
-# Define the U-Net model with VGG16 encoder 
+def unet_with_vgg16_encoder(input_shape=(1024, 2048, 3), num_classes=8):
+    """
+    Define a U-Net model with VGG16 as the encoder backbone.
 
-def unet_with_vgg16_encoder(input_shape=(1024,2048,3), num_classes=8):
-    
+    Args:
+        input_shape (tuple): Shape of the input image.
+        num_classes (int): Number of output classes for segmentation.
+
+    Returns:
+        keras.models.Model: U-Net model with VGG16 encoder.
+    """
+
+    # Input layer
     inputs = Input(input_shape)
 
-    # Load VGG16 with pre-trained weights and exclude the top fully connected layers
+    # Load VGG16 with pre-trained weights, excluding top layers
     vgg16 = VGG16(include_top=False, weights='imagenet', input_tensor=inputs)
 
-    # Freeze the VGG16 layers
+    # Freeze VGG16 layers
     for layer in vgg16.layers:
         layer.trainable = False
 
-    # Extract layers for skip connections
+    # Skip connections
     skip1 = vgg16.get_layer("block1_conv2").output  # 64 filters
     skip2 = vgg16.get_layer("block2_conv2").output  # 128 filters
     skip3 = vgg16.get_layer("block3_conv3").output  # 256 filters
     skip4 = vgg16.get_layer("block4_conv3").output  # 512 filters
 
-    # Bottleneck (last layer of VGG16)
+    # Bottleneck layer
     bottleneck = vgg16.get_layer("block5_conv3").output  # 512 filters
 
-    # Decoder with dropout
+    # Decoder with upsampling and concatenation from skip connections
     d1 = layers.Conv2DTranspose(512, (2, 2), strides=(2, 2), padding='same')(bottleneck)
     d1 = layers.concatenate([d1, skip4])
     d1 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(d1)
@@ -49,8 +58,10 @@ def unet_with_vgg16_encoder(input_shape=(1024,2048,3), num_classes=8):
     d4 = layers.Dropout(0.5)(d4)
     d4 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(d4)
 
+    # Output layer
     outputs = layers.Conv2D(num_classes, (1, 1), activation='softmax')(d4)
 
+    # Model
     model = models.Model(inputs=[inputs], outputs=[outputs])
 
     return model
