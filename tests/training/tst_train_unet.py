@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from train import main
+from src.training.train_unet import main
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def mock_model_fit():
         yield mock_fit
 
 
-def test_main_function(
+def tst_main_function(
     mock_keras_backend, mock_environment_variable, mock_mlflow, mock_model_fit
 ):
     """

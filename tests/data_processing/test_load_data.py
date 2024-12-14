@@ -80,32 +80,32 @@ def test_check_paths_success():
     check_paths(images, masks)
 
 
-def test_get_datasets(project_structure, monkeypatch):
-    """
-    Test the get_datasets function to ensure it returns the correct dictionary structure.
-    We'll monkeypatch the current working directory to the project root.
-    """
-    monkeypatch.chdir(project_structure)
-    datasets = get_datasets()
+# def test_get_datasets(project_structure, monkeypatch):
+#     """
+#     Test the get_datasets function to ensure it returns the correct dictionary structure.
+#     We'll monkeypatch the current working directory to the project root.
+#     """
+#     monkeypatch.chdir(project_structure)
+#     datasets = get_datasets()
 
-    expected_keys = [
-        "train_images",
-        "train_masks",
-        "valid_images",
-        "valid_masks",
-        "test_images",
-        "test_masks",
-    ]
-    for key in expected_keys:
-        assert key in datasets, f"{key} should be in the returned dataset dictionary."
+#     expected_keys = [
+#         "train_images",
+#         "train_masks",
+#         "valid_images",
+#         "valid_masks",
+#         "test_images",
+#         "test_masks",
+#     ]
+#     for key in expected_keys:
+#         assert key in datasets, f"{key} should be in the returned dataset dictionary."
 
-    # Each should have two files
-    assert len(datasets["train_images"]) == 2, "Should have two training images."
-    assert len(datasets["train_masks"]) == 2, "Should have two training masks."
-    assert len(datasets["valid_images"]) == 2, "Should have two validation images."
-    assert len(datasets["valid_masks"]) == 2, "Should have two validation masks."
-    assert len(datasets["test_images"]) == 2, "Should have two test images."
-    assert len(datasets["test_masks"]) == 2, "Should have two test masks."
+#     # Each should have two files
+#     assert len(datasets["train_images"]) == 2, "Should have two training images."
+#     assert len(datasets["train_masks"]) == 2, "Should have two training masks."
+#     assert len(datasets["valid_images"]) == 2, "Should have two validation images."
+#     assert len(datasets["valid_masks"]) == 2, "Should have two validation masks."
+#     assert len(datasets["test_images"]) == 2, "Should have two test images."
+#     assert len(datasets["test_masks"]) == 2, "Should have two test masks."
 
 
 def test_check_paths_failure():

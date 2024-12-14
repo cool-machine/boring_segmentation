@@ -19,11 +19,3 @@ def unet_optimizer():
             An instance of the Adam optimizer with a specified learning rate.
     """
     return keras.optimizers.Adam(learning_rate=0.0001)
-
-
-
-
-# import keras
-
-# def unet_optimizer():
-#     return keras.optimizers.Adam(learning_rate=0.0001)
