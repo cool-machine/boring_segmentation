@@ -1,8 +1,6 @@
 # src/callbacks/top_k_model_checkpoint_factory.py
 
 import os
-# from src.callbacks.top_k_model_checkpoint import TopKModelCheckpoint
-# import os
 import numpy as np
 from keras.callbacks import Callback
 from datetime import datetime
@@ -102,9 +100,9 @@ def create_top_k_checkpoint(
         src.callbacks.TopKModelCheckpoint: Configured TopKModelCheckpoint callback.
     """
     
-    current_time = datetime.now().strftime("%M-%H-%d-%m-%Y")
+    # current_time = datetime.now().strftime("%M-%H-%d-%m-%Y")
     os.makedirs(checkpoint_dir, exist_ok=True)
-    filepath = os.path.join(checkpoint_dir, f"model-{current_time}-epoch{{epoch:02d}}-val_loss{{val_loss:.4f}}.keras")
+    filepath = os.path.join(checkpoint_dir, "model-epoch{epoch:02d}-{val_loss:.4f}.keras")
     return TopKModelCheckpoint(
         filepath=filepath,
         monitor=monitor,
