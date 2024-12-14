@@ -36,9 +36,9 @@ class PlotResultsCallback(Callback):
             predicted_masks = K.argmax(predictions, axis=-1)
 
             # Create and save plots
-            os.makedirs('plots', exist_ok=True)
+            os.makedirs('outputs/plots', exist_ok=True)
             plot_filename = f'epoch_{epoch}_plot.png'
-            plot_path = os.path.join('plots', plot_filename)
+            plot_path = os.path.join('outputs/plots', plot_filename)
 
             plt.figure(figsize=(12, 4))
 

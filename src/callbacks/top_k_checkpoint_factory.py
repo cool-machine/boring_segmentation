@@ -5,6 +5,7 @@ import os
 # import os
 import numpy as np
 from keras.callbacks import Callback
+from datetime import datetime
 
 class TopKModelCheckpoint(Callback):
     """
@@ -100,9 +101,10 @@ def create_top_k_checkpoint(
     Returns:
         src.callbacks.TopKModelCheckpoint: Configured TopKModelCheckpoint callback.
     """
-
+    
+    current_time = datetime.now().strftime("%M-%H-%d-%m-%Y")
     os.makedirs(checkpoint_dir, exist_ok=True)
-    filepath = os.path.join(checkpoint_dir, 'model-epoch{epoch:02d}-{val_loss:.4f}.h5')
+    filepath = os.path.join(checkpoint_dir, f"model-{current_time}-epoch{{epoch:02d}}-val_loss{{val_loss:.4f}}.keras")
     return TopKModelCheckpoint(
         filepath=filepath,
         monitor=monitor,
