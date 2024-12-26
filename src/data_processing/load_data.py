@@ -27,26 +27,33 @@ def load_paths(directory):
     return full_paths
 
 
-def find_project_root(current_path, marker_file="README.md"):
+def find_project_root(current_path, marker_file="README.MD", max_depth=10):
     """
     Find the project's root directory by searching upwards until a marker file is found.
 
     Args:
         current_path (str or Path): The current path from which to start searching upwards.
         marker_file (str): The file used as a marker for the project root.
+        max_depth (int): Maximum number of levels to search upwards.
 
     Raises:
-        FileNotFoundError: If the marker file is not found before reaching the filesystem root.
+        FileNotFoundError: If the marker file is not found within the maximum depth.
 
     Returns:
         Path: The Path object of the project root directory.
     """
     current_path = Path(current_path).resolve()
-    while current_path != current_path.root:
+    depth = 0
+
+    while current_path != current_path.root and depth < max_depth:
+        print(f"Searching in: {current_path}")  # Debugging line
         if (current_path / marker_file).exists():
+            print(f"Found marker file at: {current_path}")  # Debugging line
             return current_path
         current_path = current_path.parent
-    raise FileNotFoundError(f"Root directory containing {marker_file} not found.")
+        depth += 1
+
+    raise FileNotFoundError(f"Root directory containing {marker_file} not found within {max_depth} levels.")
 
 
 def check_paths(images, masks):
@@ -75,18 +82,24 @@ def check_paths(images, masks):
     print("Paths are correct - check passed")
 
 
-def get_datasets():
+
+def get_datasets(root_path=None):
     """
     Retrieve paths for train, validation, and test sets of images and masks.
     Ensure that image-mask pairs match and return a dictionary of datasets.
+
+    Args:
+        root_path (Path, optional): The root directory of the project. If None, 
+                                    it will be determined using find_project_root.
 
     Returns:
         dict: A dictionary containing lists of file paths for 'train_images', 
               'train_masks', 'valid_images', 'valid_masks', 'test_images', and 'test_masks'.
     """
-    cwd = Path.cwd()
-    project_root = find_project_root(cwd)
-    print(f"Project root is {project_root}")
+    if root_path is None:
+        root_path = find_project_root(Path.cwd())  # Default to searching from cwd
+
+    print(f"Project root is {root_path}")
 
     datasets_paths = {}
     dataset_names = [
@@ -99,41 +112,41 @@ def get_datasets():
     ]
 
     # Load training images and masks
-    root_train_images = project_root / 'dataset/train/images'
+    root_train_images = root_path / 'dataset/train/images'
     train_images = load_paths(root_train_images)
     train_images = [img for img in train_images if "_leftImg8bit.png" in img]
-    datasets_paths["train_images"] = train_images
+    datasets_paths["train_images"] = sorted(train_images)
 
-    root_train_masks = project_root / 'dataset/train/masks'
+    root_train_masks = root_path / 'dataset/train/masks'
     train_masks = load_paths(root_train_masks)
     train_masks = [msk for msk in train_masks if "_labelIds.png" in msk]
-    datasets_paths["train_masks"] = train_masks
+    datasets_paths["train_masks"] = sorted(train_masks)
 
     check_paths(datasets_paths["train_images"], datasets_paths["train_masks"])
 
     # Load validation images and masks
-    root_valid_images = project_root / 'dataset/valid/images'
+    root_valid_images = root_path / 'dataset/valid/images'
     valid_images = load_paths(root_valid_images)
     valid_images = [img for img in valid_images if "_leftImg8bit.png" in img]
-    datasets_paths["valid_images"] = valid_images
+    datasets_paths["valid_images"] = sorted(valid_images)
 
-    root_valid_masks = project_root / 'dataset/valid/masks'
+    root_valid_masks = root_path / 'dataset/valid/masks'
     valid_masks = load_paths(root_valid_masks)
     valid_masks = [msk for msk in valid_masks if "_labelIds.png" in msk]
-    datasets_paths["valid_masks"] = valid_masks
+    datasets_paths["valid_masks"] = sorted(valid_masks)
 
     check_paths(datasets_paths["valid_images"], datasets_paths["valid_masks"])
 
     # Load test images and masks
-    root_test_images = project_root / 'dataset/test/images'
+    root_test_images = root_path / 'dataset/test/images'
     test_images = load_paths(root_test_images)
     test_images = [img for img in test_images if "_leftImg8bit.png" in img]
-    datasets_paths["test_images"] = test_images
+    datasets_paths["test_images"] = sorted(test_images)
 
-    root_test_masks = project_root / 'dataset/test/masks'
+    root_test_masks = root_path / 'dataset/test/masks'
     test_masks = load_paths(root_test_masks)
     test_masks = [msk for msk in test_masks if "_labelIds.png" in msk]
-    datasets_paths["test_masks"] = test_masks
+    datasets_paths["test_masks"] = sorted(test_masks)
 
     check_paths(datasets_paths["test_images"], datasets_paths["test_masks"])
 
