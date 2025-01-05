@@ -1,1 +1,1 @@
-Toy code for fine-tuning experimenting Transformer based image segmentation models (Segformer) and compare them to traditional encoder-decoder type of trained models performances and sizes.
+Toy code to fine-tune and experiment a Transformer based image segmentation model (Segformer) and compare it to a traditional encoder-decoder U-net.

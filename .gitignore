@@ -1,7 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.pyc
-
 *.py[cod]
 *$py.class
 .env
@@ -12,12 +11,13 @@ __pycache__/
 *.amltemp
 main-copy.ipynb
 mlruns
+.amlignore
 
 
 data
 !data_processing
 
-.amlignore
+
 *weights.66*
 *-copy*
 *__pycache__*
