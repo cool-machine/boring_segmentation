@@ -26,7 +26,10 @@ class CustomHistory(Callback):
             'dice_coefficient': [],
             'val_dice_coefficient': [],
             'iou': [],
-            'val_iou': []
+            'val_iou': [],
+            'during_training_accuracy':[],
+            'during_training_iou':[],
+            'during_training_dice':[],
         }
 
     def on_epoch_end(self, epoch, logs=None):

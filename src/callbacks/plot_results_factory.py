@@ -58,7 +58,7 @@ class PlotResultsCallback(Callback):
             # Predicted mask
             plt.subplot(1, 3, 3)
             plt.imshow(val_images[0])
-            plt.imshow(predicted_masks[0], cmap='jet', alpha=0.5)
+            plt.imshow(tf.squeeze(predicted_masks[0]), cmap='jet', alpha=0.5)
             plt.title("Predicted Mask")
             plt.axis("off")
 
