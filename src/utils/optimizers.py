@@ -21,7 +21,7 @@ def unet_optimizer():
     return keras.optimizers.Adam(learning_rate=0.0001)
 
 
-def segf_optimizer():
+def segf_optimizer(learning_rate=0.0001):
     """
     Creates and returns an Adam optimizer with a predefined learning rate.
     

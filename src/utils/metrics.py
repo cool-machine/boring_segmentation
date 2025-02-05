@@ -44,9 +44,6 @@ def dice_coefficient(y_true, y_pred):
     # Convert true labels to one-hot encoding
     y_true_f = tf.one_hot(tf.squeeze(tf.cast(y_true, tf.uint8), axis=-1), depth=tf.cast(8,tf.int32))
 
-    # tf.print("just after one hot masks shape in function:", tf.shape(y_true_f))
-    # tf.print("just after one hot predictions in function shape:", tf.shape(y_pred))
-    # tf.print("just after one hot predictions in function shape:", tf.shape(y_pr))
     # Flatten the true and predicted labels for element-wise operations
     y_true_f = tf.reshape(y_true_f, [-1])
     y_pred_f = tf.reshape(y_pred, [-1])
@@ -66,8 +63,8 @@ def dice_coefficient(y_true, y_pred):
     # nominator
     nominator = (2. * intersection + 1.)
     # denominator
-    denominator = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1
-    denominator = tf.cast(denominator, tf.float32)
+    denominator = tf.cast(tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f), tf.float32) + 1e-7 
+    denominator = tf.cast(denominator, tf.float32) + 1e-7
 
     return  nominator / denominator
 
@@ -113,24 +110,8 @@ def iou(y_true, y_pred):
 
     # Compute the IoU
     # compute nominator
-    nominator = tf.cast(intersection, tf.float32)
+    nominator = tf.cast(intersection, tf.float32) + 1e-7
     # compute denominator
     denominator = tf.cast(union, tf.float32) + 1e-7 
 
     return  nominator / denominator
-
-    # def iou(y_true, y_pred):
-    # # Flatten the tensors (optional, if your implementation requires it)
-    # y_true_f = tf.reshape(y_true, [-1])
-    # y_pred_f = tf.reshape(y_pred, [-1])
-    
-    # # Ensure both are float32
-    # y_true_f = tf.cast(y_true_f, tf.float32)
-    # y_pred_f = tf.cast(y_pred_f, tf.float32)
-
-    # # Now this multiplication won't fail on dtype mismatch
-    # intersection = tf.reduce_sum(y_true_f * y_pred_f)
-
-    # denominator = (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) - intersection + 1e-7)
-    
-    # return intersection / denominator

@@ -3,6 +3,7 @@ import os
 import sys
 import keras
 import gc
+import time
 
 import mlflow
 import matplotlib.pyplot as plt
@@ -17,13 +18,11 @@ from src.utils.helpers import get_mlflow_uri
 from src.utils.loss_funcs import sparse_categorical_crossentropy_loss
 from src.architectures.segformer_model import segformer
 from src.training.step import step
-from src.callbacks.plot_results_factory import plot_segmentation_results
+from src.callbacks.plot_results_factory import plot_segmentation_results, plot_colored_segmentation
 
 # Import custom callbacks and utilities
 from src.callbacks.custom_history_factory import CustomHistory
 from src.callbacks.save_best_n_models import maybe_save_best_model
-
-
 
 # Dynamically add the `img_segmentation` root directory to `sys.path`
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -46,10 +45,19 @@ val_accuracy = SparseCategoricalAccuracy(name='val_accuracy')
 # Logging
 custom_history = CustomHistory()
 
-epochs = 2
+epochs = 1000
 best_val_loss = float('inf')
 patience = 0
 stop_callback = 0
+new_lr = optimizer.learning_rate.numpy() 
+# Set a global seed for all random ops
+tf.random.set_seed(33)
+
+# Enable deterministic ops (if you still want it)
+tf.config.experimental.enable_op_determinism()
+# Set TensorFlow deterministic behavior
+os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 
 # Define the main training function
@@ -58,27 +66,25 @@ def main():
     Main function to initialize, compile, and train the U-Net model with VGG16 encoder.
     Integrates MLflow for experiment tracking.
     """
-    global epochs, best_val_loss, patience, stop_callback, model, loss_fn, optimizer
+    global epochs, best_val_loss, patience, stop_callback, model, loss_fn, optimizer, new_lr
 
     # Clear Keras backend to ensure a fresh session
     keras.backend.clear_session()
-
-    # Set TensorFlow deterministic behavior
-    os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+    
 
     # Configure MLflow tracking URI
     mlflow_tracking_uri = get_mlflow_uri()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # Set the experiment name in MLflow
-    experiment_name = "segf_experiment_v103"
+    experiment_name = "segf_experiment_v105-gpu"
     mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="Segformer Training"):
 
 
         # Load training and validation datasets
-        dataset_train, dataset_val = load_dataset_segf(train_batch_size=2, 
-                                                       valid_batch_size=2)
+        dataset_train, dataset_val = load_dataset_segf(train_batch_size=32, 
+                                                       valid_batch_size=16)
 
         length_tr = sum([1 for _ in dataset_train])
         length_vl = sum([1 for _ in dataset_val])
@@ -92,6 +98,7 @@ def main():
         custom_history.on_train_begin()
 
         for epoch in range(epochs):
+            start_time = time.time()
 
             # Reset custom metrics at the start of each epoch
             mean_train_loss.reset_state()
@@ -113,12 +120,7 @@ def main():
             
 
             # Training loop
-            for images, masks in dataset_train.take(1):
-                # logits_t = model(val_images, training=False).logits
-                # val_predictions = tf.transpose(logits_t, [0, 2, 3, 1])
-                
-                # val_masks = tf.transpose(val_masks, [0, 2, 3, 1])
-
+            for images, masks in dataset_train:
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -145,7 +147,7 @@ def main():
 
 
             # Compute metrics on training data after training
-            for images, masks in dataset_train.take(1):
+            for images, masks in dataset_train:
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -175,7 +177,7 @@ def main():
             epoch_train_dice = train_dice_total / train_steps
             
             # Validation loop
-            for val_images, val_masks in dataset_val.take(1):
+            for val_images, val_masks in dataset_val:
                 
                 # shape val_images: [B, C, H, W]
                 # shape val_masks: [B, C, H, W]
@@ -264,20 +266,26 @@ def main():
             mlflow.log_metric('during_training_accuracy', during_training_accuracy, step=epoch)
             mlflow.log_metric('during_training_iou', during_training_iou, step=epoch)
             mlflow.log_metric('during_training_dice', during_training_dice, step=epoch)
+            
+            
+            mlflow.log_metric("learning_rate", new_lr)
+            mlflow.log_metric("patience", patience)
+            mlflow.log_metric("epoch", epoch)
+            mlflow.log_metric("stop_callback", stop_callback)
 
             # CALLBACK (1) - reduce learning rate on plateau
-            if (patience > 10) and (epoch_val_loss) > best_val_loss:
+            if (patience > 20) and (epoch_val_loss > best_val_loss):
                 patience = 0
                 new_lr = optimizer.learning_rate.numpy() * 0.5
                 maybe_save_best_model(model, epoch_train_iou, epoch)
 
-                if new_lr >= 1e-6:
+                if new_lr >= 1e-7:
                     optimizer.learning_rate.assign(new_lr)
                     print(f'Reduced learning rate to {new_lr}')
 
             # Callback (2) - check for the best model and save at the checkpoint
             if epoch_val_loss < best_val_loss:
-                maybe_save_best_model(model, epoch_train_iou, epoch)
+                maybe_save_best_model(model, epoch_val_loss, epoch)
                 patience = 0
                 stop_callback = 0
                 best_val_loss = epoch_val_loss
@@ -289,18 +297,28 @@ def main():
             # Callback (3) - plot and save predictions
             if epoch % 10 == 0:
                 # for val_images, val_masks in dataset_val.take(1):
-                fig = plot_segmentation_results(val_images[0],
-                                                val_masks_[0],
-                                                val_predictions[0],
-                                                )
-                mlflow.log_figure(fig, f"epoch_{epoch}_prediction.png")
-                plt.close(fig)
+                fig0 = plot_segmentation_results(val_images[0],
+                                                    val_masks_[0],
+                                                    val_predictions[0],
+                                                    )
+                fig1 = plot_colored_segmentation(val_images[0],
+                                                    val_masks_[0],
+                                                    val_predictions[0],
+                                                    )
+                
+                mlflow.log_figure(fig0, f"epoch_{epoch}_prediction.png")
+                mlflow.log_figure(fig1, f"epoch_{epoch}_prediction_better.png")
+                plt.close(fig0)
+                plt.close(fig1)
+                
 
             # CALLBACK (4) - check if early stopping condition is met
-            if stop_callback > 15:
+            if stop_callback > 65:
                 print('Early stopping triggered')
                 break
             gc.collect()
+            elapsed_time = time.time() - start_time
+            print(f"\n\nEpoch {epoch + 1}/{epochs} completed in {elapsed_time:.2f} seconds - patience: {patience} - stop_callback: {stop_callback}\n\n")
 
 # Entry point for the script
 if __name__ == "__main__":
