@@ -9,13 +9,12 @@ __pycache__/
 .ipynb_checkpoints/
 *amltmp*
 *.amltemp
-main-copy.ipynb
 mlruns
 .amlignore
-
+*_old*
+*copy*
 
 *weights.66*
-*-copy*
 *__pycache__*
 __init__
 *pyc*

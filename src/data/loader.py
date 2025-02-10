@@ -112,12 +112,12 @@ def get_datasets(root_path=None):
     ]
 
     # Load training images and masks
-    root_train_images = root_path / 'dataset/train/images'
+    root_train_images = root_path / 'dataset/processed/train/images'
     train_images = load_paths(root_train_images)
     train_images = [img for img in train_images if "_leftImg8bit.png" in img]
     datasets_paths["train_images"] = sorted(train_images)
 
-    root_train_masks = root_path / 'dataset/train/masks'
+    root_train_masks = root_path / 'dataset/processed/train/masks'
     train_masks = load_paths(root_train_masks)
     train_masks = [msk for msk in train_masks if "_labelIds.png" in msk]
     datasets_paths["train_masks"] = sorted(train_masks)
@@ -125,12 +125,12 @@ def get_datasets(root_path=None):
     check_paths(datasets_paths["train_images"], datasets_paths["train_masks"])
 
     # Load validation images and masks
-    root_valid_images = root_path / 'dataset/valid/images'
+    root_valid_images = root_path / 'dataset/processed/valid/images'
     valid_images = load_paths(root_valid_images)
     valid_images = [img for img in valid_images if "_leftImg8bit.png" in img]
     datasets_paths["valid_images"] = sorted(valid_images)
 
-    root_valid_masks = root_path / 'dataset/valid/masks'
+    root_valid_masks = root_path / 'dataset/processed/valid/masks'
     valid_masks = load_paths(root_valid_masks)
     valid_masks = [msk for msk in valid_masks if "_labelIds.png" in msk]
     datasets_paths["valid_masks"] = sorted(valid_masks)
@@ -138,12 +138,12 @@ def get_datasets(root_path=None):
     check_paths(datasets_paths["valid_images"], datasets_paths["valid_masks"])
 
     # Load test images and masks
-    root_test_images = root_path / 'dataset/test/images'
+    root_test_images = root_path / 'dataset/processed/test/images'
     test_images = load_paths(root_test_images)
     test_images = [img for img in test_images if "_leftImg8bit.png" in img]
     datasets_paths["test_images"] = sorted(test_images)
 
-    root_test_masks = root_path / 'dataset/test/masks'
+    root_test_masks = root_path / 'dataset/processed/test/masks'
     test_masks = load_paths(root_test_masks)
     test_masks = [msk for msk in test_masks if "_labelIds.png" in msk]
     datasets_paths["test_masks"] = sorted(test_masks)

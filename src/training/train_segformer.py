@@ -11,17 +11,17 @@ import tensorflow as tf
 from tensorflow.keras.metrics import Mean, SparseCategoricalAccuracy
 
 
-from src.data_processing.process_data import load_dataset_segf
+from src.data.processor import load_dataset_segf
 from src.utils.metrics import dice_coefficient, iou
 from src.utils.optimizers import segf_optimizer
 from src.utils.helpers import get_mlflow_uri
 from src.utils.loss_funcs import sparse_categorical_crossentropy_loss
-from src.architectures.segformer_model import segformer
+from src.architectures.segformer import segformer
 from src.training.step import step
-from src.callbacks.plot_results_factory import plot_segmentation_results, plot_colored_segmentation
+from src.callbacks.callbacks import plot_segmentation_results, plot_colored_segmentation
 
 # Import custom callbacks and utilities
-from src.callbacks.custom_history_factory import CustomHistory
+from src.callbacks.callbacks import CustomHistory
 from src.callbacks.save_best_n_models import maybe_save_best_model
 
 # Dynamically add the `img_segmentation` root directory to `sys.path`
@@ -45,7 +45,7 @@ val_accuracy = SparseCategoricalAccuracy(name='val_accuracy')
 # Logging
 custom_history = CustomHistory()
 
-epochs = 1000
+epochs = 1
 best_val_loss = float('inf')
 patience = 0
 stop_callback = 0
@@ -77,7 +77,7 @@ def main():
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # Set the experiment name in MLflow
-    experiment_name = "segf_experiment_v105-gpu"
+    experiment_name = "segf_experiment_testing-gpu-02-2025"
     mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="Segformer Training"):
 
@@ -120,7 +120,7 @@ def main():
             
 
             # Training loop
-            for images, masks in dataset_train:
+            for images, masks in dataset_train.take(3):
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -147,7 +147,7 @@ def main():
 
 
             # Compute metrics on training data after training
-            for images, masks in dataset_train:
+            for images, masks in dataset_train.take(3):
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -177,7 +177,7 @@ def main():
             epoch_train_dice = train_dice_total / train_steps
             
             # Validation loop
-            for val_images, val_masks in dataset_val:
+            for val_images, val_masks in dataset_val.take(3):
                 
                 # shape val_images: [B, C, H, W]
                 # shape val_masks: [B, C, H, W]

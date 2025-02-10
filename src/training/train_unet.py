@@ -19,7 +19,7 @@ from src.callbacks import (
     CustomHistory,
 )
 
-from src.data_processing.process_data import load_dataset_unet
+from src.data.processor import load_dataset_unet
 from src.utils.metrics import cust_accuracy, dice_coefficient, iou
 from src.architectures.unet_model import unet_with_vgg16_encoder
 from src.utils.optimizers import unet_optimizer

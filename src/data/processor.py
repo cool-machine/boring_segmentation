@@ -11,7 +11,7 @@ from tensorflow.keras import backend as K
 
 # Adjust this import to match your project structure. 
 # If load_data.py is in the same folder, you can use:
-from .load_data import get_datasets
+from .loader import get_datasets
 
 
 def read_image(file_path):
