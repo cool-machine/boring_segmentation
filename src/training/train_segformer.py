@@ -117,7 +117,6 @@ def main():
             val_steps = 0
             val_iou_total = 0
             val_dice_total = 0
-            
 
             # Training loop
             for images, masks in dataset_train.take(3):
