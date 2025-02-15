@@ -39,4 +39,4 @@ def segf_optimizer(learning_rate=0.0001):
         keras.optimizers.Adam:
             An instance of the Adam optimizer with a specified learning rate.
     """
-    return keras.optimizers.Adam(learning_rate=0.0001)
+    return keras.optimizers.Adam(learning_rate=learning_rate)

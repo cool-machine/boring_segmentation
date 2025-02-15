@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.metrics import Mean, SparseCategoricalAccuracy
 
-
 from src.data.processor import load_dataset_segf
 from src.utils.metrics import dice_coefficient, iou
 from src.utils.optimizers import segf_optimizer
@@ -22,7 +21,7 @@ from src.callbacks.callbacks import plot_segmentation_results, plot_colored_segm
 
 # Import custom callbacks and utilities
 from src.callbacks.callbacks import CustomHistory
-from src.callbacks.save_best_n_models import maybe_save_best_model
+from src.callbacks.callbacks import maybe_save_best_model
 
 # Dynamically add the `img_segmentation` root directory to `sys.path`
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -30,31 +29,37 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 print(f"This is the root directory: {root_dir}")
 
-
 # Optimizer and loss function
-model = segformer()
-optimizer = segf_optimizer()
+new_lr = 0.0001
+model_name = "segformer" 
+model = segformer() #False, path="outputs_old/segformer/models/epoch_997_val_0.26613563299179077/")
+optimizer = segf_optimizer(new_lr)
 loss_fn = sparse_categorical_crossentropy_loss()
 
 # Metrics
+during_train_loss = Mean(name='during_train_loss')
+during_train_accuracy = SparseCategoricalAccuracy(name='during_train_accuracy') 
+
 mean_train_loss = Mean(name='train_loss')
 train_accuracy = SparseCategoricalAccuracy(name='train_accuracy')
+
 mean_val_loss = Mean(name='val_loss')
 val_accuracy = SparseCategoricalAccuracy(name='val_accuracy')
 
 # Logging
 custom_history = CustomHistory()
 
-epochs = 1
+epochs = 1000
 best_val_loss = float('inf')
 patience = 0
 stop_callback = 0
-new_lr = optimizer.learning_rate.numpy() 
+
 # Set a global seed for all random ops
 tf.random.set_seed(33)
 
 # Enable deterministic ops (if you still want it)
 tf.config.experimental.enable_op_determinism()
+
 # Set TensorFlow deterministic behavior
 os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
@@ -66,21 +71,21 @@ def main():
     Main function to initialize, compile, and train the U-Net model with VGG16 encoder.
     Integrates MLflow for experiment tracking.
     """
-    global epochs, best_val_loss, patience, stop_callback, model, loss_fn, optimizer, new_lr
+    global epochs, best_val_loss, patience, stop_callback, model
+    global loss_fn, optimizer, new_lr, model_name
 
     # Clear Keras backend to ensure a fresh session
     keras.backend.clear_session()
     
-
     # Configure MLflow tracking URI
     mlflow_tracking_uri = get_mlflow_uri()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # Set the experiment name in MLflow
-    experiment_name = "segf_experiment_testing-gpu-02-2025"
+    experiment_name = "segf_experiment_testing-gpu-15-02-2025-v1"
     mlflow.set_experiment(experiment_name)
-    with mlflow.start_run(run_name="Segformer Training"):
 
+    with mlflow.start_run(run_name=f"Segformer Training - {experiment_name} "):
 
         # Load training and validation datasets
         dataset_train, dataset_val = load_dataset_segf(train_batch_size=32, 
@@ -119,12 +124,12 @@ def main():
             val_dice_total = 0
 
             # Training loop
-            for images, masks in dataset_train.take(3):
+            for images, masks in dataset_train:
                 step(images=images,  
                      masks=masks,
                      model=model,
-                     total_loss=mean_train_loss,
-                     accuracy=train_accuracy,
+                     total_loss=during_train_loss,
+                     accuracy=during_train_accuracy,
                      loss_fn=loss_fn,
                      optimizer=optimizer,
                      training=True,
@@ -138,15 +143,14 @@ def main():
                 during_training_dice_total += dice_coefficient(masks_t, predictions_t).numpy()
                 during_training_steps += 1
 
-            during_training_loss = mean_train_loss.result().numpy()
-            during_training_accuracy = train_accuracy.result().numpy()
+            during_training_loss = during_train_loss.result().numpy()
+            during_training_accuracy = during_train_accuracy.result().numpy()
             
             during_training_iou = during_training_iou_total / during_training_steps
             during_training_dice = during_training_dice_total / during_training_steps
 
-
             # Compute metrics on training data after training
-            for images, masks in dataset_train.take(3):
+            for images, masks in dataset_train:
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -156,13 +160,14 @@ def main():
                      optimizer=optimizer,
                      training=False,
                      )
-
-                masks_tt = tf.transpose(masks, [0, 2, 3, 1])
             
                 ## Generate predictions (raw logits) on training data: [B, C(==8), H, W]
                 logits_tt = model(images, training=False).logits
+                
                 # transpose predictions (raw logits) to channels last: [B, H, W, C(==8)]
                 predictions_tt = tf.transpose(logits_tt, [0, 2, 3, 1])
+
+                masks_tt = tf.transpose(masks, [0, 2, 3, 1])
 
                 train_iou_total += iou(masks_tt, predictions_tt).numpy()
                 
@@ -176,12 +181,12 @@ def main():
             epoch_train_dice = train_dice_total / train_steps
             
             # Validation loop
-            for val_images, val_masks in dataset_val.take(3):
+            for val_images, val_masks in dataset_val:
                 
                 # shape val_images: [B, C, H, W]
                 # shape val_masks: [B, C, H, W]
-                step(images=images,  
-                     masks=masks,
+                step(images=val_images,  
+                     masks=val_masks,
                      model=model,
                      total_loss=mean_val_loss,
                      accuracy=val_accuracy,
@@ -266,7 +271,6 @@ def main():
             mlflow.log_metric('during_training_iou', during_training_iou, step=epoch)
             mlflow.log_metric('during_training_dice', during_training_dice, step=epoch)
             
-            
             mlflow.log_metric("learning_rate", new_lr)
             mlflow.log_metric("patience", patience)
             mlflow.log_metric("epoch", epoch)
@@ -276,7 +280,7 @@ def main():
             if (patience > 20) and (epoch_val_loss > best_val_loss):
                 patience = 0
                 new_lr = optimizer.learning_rate.numpy() * 0.5
-                maybe_save_best_model(model, epoch_train_iou, epoch)
+                maybe_save_best_model(model, epoch_val_loss, epoch, model_name)
 
                 if new_lr >= 1e-7:
                     optimizer.learning_rate.assign(new_lr)
@@ -284,7 +288,7 @@ def main():
 
             # Callback (2) - check for the best model and save at the checkpoint
             if epoch_val_loss < best_val_loss:
-                maybe_save_best_model(model, epoch_val_loss, epoch)
+                maybe_save_best_model(model, epoch_val_loss, epoch, model_name)
                 patience = 0
                 stop_callback = 0
                 best_val_loss = epoch_val_loss
@@ -300,17 +304,17 @@ def main():
                                                     val_masks_[0],
                                                     val_predictions[0],
                                                     )
+                                                    
                 fig1 = plot_colored_segmentation(val_images[0],
                                                     val_masks_[0],
                                                     val_predictions[0],
                                                     )
                 
-                mlflow.log_figure(fig0, f"epoch_{epoch}_prediction.png")
-                mlflow.log_figure(fig1, f"epoch_{epoch}_prediction_better.png")
+                mlflow.log_figure(fig0, f"visualizations/epoch_{epoch}_prediction.png")
+                mlflow.log_figure(fig1, f"visualizations/epoch_{epoch}_prediction_better.png")
                 plt.close(fig0)
                 plt.close(fig1)
                 
-
             # CALLBACK (4) - check if early stopping condition is met
             if stop_callback > 65:
                 print('Early stopping triggered')

@@ -15,6 +15,7 @@ def step(images,
 
     if training:
         with tf.GradientTape() as tape:
+
             # Get logits from the model
             logits = model(images, training=training).logits
 

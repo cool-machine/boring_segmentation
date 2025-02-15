@@ -12,15 +12,19 @@ from transformers import TFSegformerForSemanticSegmentation, SegformerForSemanti
 from transformers import SegformerConfig
 
 # Create a new configuration
-def segformer():
+def segformer(initial=True, path = ""):
     config = SegformerConfig(
         num_labels=8,  # Set the number of labels/classes
         id2label={0: "flat", 1: "human", 2: "vehicle", 3: "construction", 4: "object", 5: "nature", 6: "sky", 7: "void"},
         label2id={"flat": 0, "human": 1, "vehicle": 2, "construction": 3, "object": 4, "nature": 5, "sky": 6, "void": 7},
         image_size=(512, 1024),  # Specify the input image size
     )
-
-    model = TFSegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-cityscapes-512-1024",
+    if initial:
+        model = TFSegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-cityscapes-512-1024", 
+                                                                    config=config,
+                                                                    ignore_mismatched_sizes=True)
+    else: 
+        model = TFSegformerForSemanticSegmentation.from_pretrained(path,
                                                                     config=config,
                                                                     ignore_mismatched_sizes=True)
     

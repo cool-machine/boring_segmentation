@@ -155,29 +155,24 @@ def plot_segmentation_results(image, true_mask, pred_mask, alpha=0.6):
 
     # Convert tensors to NumPy arrays
     # Convert from Tensor to NumPy array (and possibly reshape for plotting)
-    image_np = image.numpy()
-    true_mask_np = true_mask.numpy()
-    pred_mask_np = pred_mask.numpy()
-    
-    
-    # image_np = tf.convert_to_tensor(image).numpy()
-    # true_mask_np = tf.convert_to_tensor(true_mask).numpy()
-    # pred_mask_np = tf.argmax(pred_mask, axis=-1).numpy()
+    image_np = image.numpy() * 255
+    true_mask_np = true_mask.numpy().astype("uint8")
+    pred_mask_np = pred_mask.numpy().astype("uint8")
 
     # Create the plot
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
     # Plot the original image
-    axes[0].imshow(image_np.astype("float32"))
+    axes[0].imshow(image_np.astype("uint8"))
     axes[0].set_title("Original Image")
     
     # Overlay true mask on the original image
-    axes[1].imshow(image_np.astype("float32"))
+    axes[1].imshow(image_np.astype("uint8"))
     axes[1].imshow(true_mask_np, cmap="jet", alpha=alpha)
     axes[1].set_title("True Mask Overlay")
     
     # Overlay predicted mask on the original image
-    axes[2].imshow(image_np.astype("float32"))
+    axes[2].imshow(image_np.astype("uint8"))
     axes[2].imshow(pred_mask_np, cmap="jet", alpha=alpha)
     axes[2].set_title("Predicted Mask Overlay")
     
@@ -221,16 +216,9 @@ def plot_colored_segmentation(image, mask, pred_mask):
     
     # Prepare mask for plotting 
     mask = tf.squeeze(mask)
-    # mask_pred = "Prediction"
-
-    # if not label:
-    #     mask = tf.argmax(mask, axis = -1)
-    
-    # if label:
-    #     mask_name = "Original"
 
     # Convert image and mask to NumPy arrays
-    image_np = image.numpy().astype("float32")
+    image_np = (image.numpy()*255).astype("uint8")
     mask_np = mask.numpy().astype("uint8")
     
     pred_mask = tf.argmax(pred_mask, axis=-1)
@@ -239,24 +227,18 @@ def plot_colored_segmentation(image, mask, pred_mask):
     
     
     # Create a blank color image for the mask
-    color_true_mask = np.zeros((*mask_np.shape, 3), dtype=np.float32)
-    
+    color_true_mask = np.zeros((*mask_np.shape, 3), dtype=np.uint8)
     
     # Create a blank color image for the mask
-    color_pred_mask = np.zeros((*mask_np_pred.shape, 3), dtype=np.float32)
+    color_pred_mask = np.zeros((*mask_np_pred.shape, 3), dtype=np.uint8)
  
     # Map each category to its corresponding color
     for category, color in categories_colors.items():
         color_true_mask[mask_np == category] = np.array(color) 
-
        
     # Map each category to its corresponding color
     for category, color in categories_colors.items():
         color_pred_mask[mask_np_pred == category] = np.array(color) 
-
-
-    # Overlay the colorized mask on the original image
-    # blended = (1 - alpha) * image_np + alpha * color_mask
 
     # Plot the original image, colorized mask, and blended result
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
@@ -276,6 +258,7 @@ def plot_colored_segmentation(image, mask, pred_mask):
     axes[2].axis("off")
 
     plt.tight_layout()
+
     return fig
 
 
@@ -314,29 +297,41 @@ def create_reduce_lr(
 
 # 4. Checkpoint callback - saving K best models
 best_models = []
-def maybe_save_best_model(model, epoch_val_loss, epoch):
-    global best_models
-    
-    if len(best_models) < 3 or epoch_val_loss < max(m["val_loss"] for m in best_models):
-        model_dir = "./outputs/segformer"
-        os.makedirs(model_dir, exist_ok=True)
 
+def maybe_save_best_model(model, epoch_val_loss, epoch, model_name):
+    
+    global best_models
+
+    if len(best_models) < 3 or epoch_val_loss < max(m["val_loss"] for m in best_models):
+
+        model_dir = f"./output/{model_name}/models"
+        mlflow_artifact_dir = f"./output/{model_name}/mlflow_artifacts"
+        
         # Create a *unique* subdir for each checkpoint
-        checkpoint_dir = os.path.join(model_dir, f"epoch_{epoch}_val_{epoch_val_loss}")
-        # Create the subfolder for this checkpoint
-        os.makedirs(checkpoint_dir, exist_ok=True)
+        os.makedirs(model_dir, exist_ok=True)
+        # os.makedirs(mlflow_artifact_dir, exist_ok=True)
+
+        model_file_name = f"model_epoch_{epoch}_val_{epoch_val_loss}"
+        model_full_path = os.path.join(model_dir, model_file_name)
+
+        # Create the subfolder for this checkpoint        
+        mlflow_artifact_file_name = f"model_mlflow_artifact_epoch_{epoch}"
+        mlflow_artifact_full_path = os.path.join(mlflow_artifact_dir, mlflow_artifact_file_name)
         
         # Now save_pretrained into this *folder*
-        model.save_pretrained(checkpoint_dir)
+        model.save_pretrained(model_full_path)
 
         # Log the entire directory to MLflow (zips it as an artifact)
-        mlflow.log_artifacts(checkpoint_dir, artifact_path=f"checkpoints/epoch_{epoch}")
+        mlflow.log_artifacts(model_full_path, artifact_path=mlflow_artifact_full_path)
+
+        # # Log the entire directory to MLflow (zips it as an artifact)
+        # mlflow.log_artifacts(checkpoint_dir, artifact_path=artifact_path)
 
         # Add the directory path to best_models
         best_models.append({
             "val_loss": epoch_val_loss,
             "epoch": epoch+1,
-            "path": checkpoint_dir  # store the folder path
+            "path": model_full_path  # store the folder path
         })
 
         # Sort & remove the worst
@@ -425,11 +420,12 @@ class TopKModelCheckpoint(Callback):
 
 # 5. Saving top k checkpoints
 def create_top_k_checkpoint(
-    checkpoint_dir='outputs/checkpoints',
+    checkpoint_dir=f'outputs/checkpoints',
     top_k=3,
     monitor='val_loss',
     mode='min'
-):
+    ):
+
     """
     Factory function to create a custom TopKModelCheckpoint callback.
 

@@ -11,7 +11,7 @@ __pycache__/
 *.amltemp
 mlruns
 .amlignore
-*_old*
+*old*
 *copy*
 
 *weights.66*
