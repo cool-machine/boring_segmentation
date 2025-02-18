@@ -1,15 +1,22 @@
-# Import necessary libraries
+# Standard library imports
 import os
 import sys
-import keras
 import gc
 import time
+import logging
 
+# Configure Azure logging
+logging.getLogger("azure").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+
+# Third-party imports
+import keras
 import mlflow
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.metrics import Mean, SparseCategoricalAccuracy
 
+# Local application imports
 from src.data.processor import load_dataset_segf
 from src.utils.metrics import dice_coefficient, iou
 from src.utils.optimizers import segf_optimizer
@@ -17,11 +24,14 @@ from src.utils.helpers import get_mlflow_uri
 from src.utils.loss_funcs import sparse_categorical_crossentropy_loss
 from src.architectures.segformer import segformer
 from src.training.step import step
-from src.callbacks.callbacks import plot_segmentation_results, plot_colored_segmentation
-
-# Import custom callbacks and utilities
-from src.callbacks.callbacks import CustomHistory
-from src.callbacks.callbacks import maybe_save_best_model
+from src.callbacks.callbacks import (
+    plot_segmentation_results,
+    plot_colored_segmentation,
+    CustomHistory,
+    maybe_save_best_model
+)
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 # Dynamically add the `img_segmentation` root directory to `sys.path`
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -29,33 +39,6 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 print(f"This is the root directory: {root_dir}")
 
-# Optimizer and loss function
-new_lr = 0.0001
-model_name = "segformer" 
-model = segformer() #False, path="outputs_old/segformer/models/epoch_997_val_0.26613563299179077/")
-optimizer = segf_optimizer(new_lr)
-loss_fn = sparse_categorical_crossentropy_loss()
-
-# Metrics
-during_train_loss = Mean(name='during_train_loss')
-during_train_accuracy = SparseCategoricalAccuracy(name='during_train_accuracy') 
-
-mean_train_loss = Mean(name='train_loss')
-train_accuracy = SparseCategoricalAccuracy(name='train_accuracy')
-
-mean_val_loss = Mean(name='val_loss')
-val_accuracy = SparseCategoricalAccuracy(name='val_accuracy')
-
-# Logging
-custom_history = CustomHistory()
-
-epochs = 1000
-best_val_loss = float('inf')
-patience = 0
-stop_callback = 0
-
-# Set a global seed for all random ops
-tf.random.set_seed(33)
 
 # Enable deterministic ops (if you still want it)
 tf.config.experimental.enable_op_determinism()
@@ -64,32 +47,100 @@ tf.config.experimental.enable_op_determinism()
 os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
+# Set a global seed for all random ops
+tf.random.set_seed(33)
 
-# Define the main training function
+# Add after imports
+logging.getLogger("azure").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+
+# Add after imports
+os.environ["AZURE_LOG_LEVEL"] = "WARNING"
+
+# Configure logging at the start of your script
+logging.basicConfig(level=logging.WARNING)
+
+# Configure specific loggers
+loggers_to_silence = [
+    "azure",
+    "azure.core.pipeline.policies.http_logging_policy",
+    "azure.identity",
+    "azure.core"
+]
+
+for logger_name in loggers_to_silence:
+    logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+@dataclass
+class TrainingConfig:
+    """Configuration for training parameters"""
+    learning_rate: float = 0.0001
+    epochs: int = 10 # Changed from 1000 as per your edit
+    train_batch_size: int = 32
+    valid_batch_size: int = 16
+    early_stopping_patience: int = 65
+    reduce_lr_patience: int = 20
+    model_name: str = "segformer"
+
+class TrainingState:
+    """Manages training state and metrics"""
+    def __init__(self, config: TrainingConfig):
+        self.best_val_loss = float('inf')
+        self.patience = 0
+        self.stop_callback = 0
+        self.config = config
+        self.current_lr = config.learning_rate  # Add this line
+        
+        # Initialize metrics
+        self.during_train_loss = Mean(name='during_train_loss')
+        self.during_train_accuracy = SparseCategoricalAccuracy(name='during_train_accuracy')
+        self.mean_train_loss = Mean(name='train_loss')
+        self.train_accuracy = SparseCategoricalAccuracy(name='train_accuracy')
+        self.mean_val_loss = Mean(name='val_loss')
+        self.val_accuracy = SparseCategoricalAccuracy(name='val_accuracy')
+    
+    def reset_metrics(self):
+        """Reset all metrics at the start of each epoch"""
+        for metric in [self.during_train_loss, self.during_train_accuracy,
+                      self.mean_train_loss, self.train_accuracy,
+                      self.mean_val_loss, self.val_accuracy]:
+            metric.reset_state()
+
 def main():
     """
-    Main function to initialize, compile, and train the U-Net model with VGG16 encoder.
+    Main function to initialize, compile, and train the Segformer model.
     Integrates MLflow for experiment tracking.
     """
-    global epochs, best_val_loss, patience, stop_callback, model
-    global loss_fn, optimizer, new_lr, model_name
-
     # Clear Keras backend to ensure a fresh session
     keras.backend.clear_session()
+    
+    # Initialize configuration and state
+    config = TrainingConfig()
+    state = TrainingState(config)
+    
+    # Initialize model, optimizer, and loss function
+    model = segformer()
+    optimizer = segf_optimizer(config.learning_rate)
+    loss_fn = sparse_categorical_crossentropy_loss()
+    
+    # Initialize custom history
+    custom_history = CustomHistory()
     
     # Configure MLflow tracking URI
     mlflow_tracking_uri = get_mlflow_uri()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # Set the experiment name in MLflow
-    experiment_name = "segf_experiment_testing-gpu-15-02-2025-v1"
+    experiment_name = "segf_experiment_testing-gpu-16-02-2025-v1"
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name=f"Segformer Training - {experiment_name} "):
 
         # Load training and validation datasets
-        dataset_train, dataset_val = load_dataset_segf(train_batch_size=32, 
-                                                       valid_batch_size=16)
+        dataset_train, dataset_val = load_dataset_segf(
+            train_batch_size=config.train_batch_size,
+            valid_batch_size=config.valid_batch_size
+        )
 
         length_tr = sum([1 for _ in dataset_train])
         length_vl = sum([1 for _ in dataset_val])
@@ -102,14 +153,11 @@ def main():
         # Custom training loop
         custom_history.on_train_begin()
 
-        for epoch in range(epochs):
+        for epoch in range(config.epochs):
             start_time = time.time()
 
             # Reset custom metrics at the start of each epoch
-            mean_train_loss.reset_state()
-            train_accuracy.reset_state()
-            mean_val_loss.reset_state()
-            val_accuracy.reset_state()
+            state.reset_metrics()
             
             during_training_steps = 0
             during_training_iou_total = 0
@@ -128,8 +176,8 @@ def main():
                 step(images=images,  
                      masks=masks,
                      model=model,
-                     total_loss=during_train_loss,
-                     accuracy=during_train_accuracy,
+                     total_loss=state.during_train_loss,
+                     accuracy=state.during_train_accuracy,
                      loss_fn=loss_fn,
                      optimizer=optimizer,
                      training=True,
@@ -143,8 +191,8 @@ def main():
                 during_training_dice_total += dice_coefficient(masks_t, predictions_t).numpy()
                 during_training_steps += 1
 
-            during_training_loss = during_train_loss.result().numpy()
-            during_training_accuracy = during_train_accuracy.result().numpy()
+            during_training_loss = state.during_train_loss.result().numpy()
+            during_training_accuracy = state.during_train_accuracy.result().numpy()
             
             during_training_iou = during_training_iou_total / during_training_steps
             during_training_dice = during_training_dice_total / during_training_steps
@@ -154,8 +202,8 @@ def main():
                 step(images=images,  
                      masks=masks,
                      model=model,
-                     total_loss=mean_train_loss,
-                     accuracy=train_accuracy,
+                     total_loss=state.mean_train_loss,
+                     accuracy=state.train_accuracy,
                      loss_fn=loss_fn,
                      optimizer=optimizer,
                      training=False,
@@ -174,8 +222,8 @@ def main():
                 train_dice_total += dice_coefficient(masks_tt, predictions_tt).numpy()
                 train_steps += 1
             
-            epoch_train_loss = mean_train_loss.result().numpy()
-            epoch_train_accuracy = train_accuracy.result().numpy()
+            epoch_train_loss = state.mean_train_loss.result().numpy()
+            epoch_train_accuracy = state.train_accuracy.result().numpy()
             
             epoch_train_iou = train_iou_total / train_steps
             epoch_train_dice = train_dice_total / train_steps
@@ -188,8 +236,8 @@ def main():
                 step(images=val_images,  
                      masks=val_masks,
                      model=model,
-                     total_loss=mean_val_loss,
-                     accuracy=val_accuracy,
+                     total_loss=state.mean_val_loss,
+                     accuracy=state.val_accuracy,
                      loss_fn=loss_fn,
                      optimizer=optimizer,
                      training=False,
@@ -213,8 +261,8 @@ def main():
                 val_steps += 1
 
             # # After the entire validation dataset is processed:
-            epoch_val_loss = mean_val_loss.result().numpy()
-            epoch_val_accuracy = val_accuracy.result().numpy()
+            epoch_val_loss = state.mean_val_loss.result().numpy()
+            epoch_val_accuracy = state.val_accuracy.result().numpy()
             
             epoch_val_iou = val_iou_total / val_steps
             epoch_val_dice = val_dice_total / val_steps
@@ -271,31 +319,31 @@ def main():
             mlflow.log_metric('during_training_iou', during_training_iou, step=epoch)
             mlflow.log_metric('during_training_dice', during_training_dice, step=epoch)
             
-            mlflow.log_metric("learning_rate", new_lr)
-            mlflow.log_metric("patience", patience)
+            mlflow.log_metric("learning_rate", state.current_lr)  # Use state.current_lr instead of new_lr
+            mlflow.log_metric("patience", state.patience)
             mlflow.log_metric("epoch", epoch)
-            mlflow.log_metric("stop_callback", stop_callback)
+            mlflow.log_metric("stop_callback", state.stop_callback)
 
             # CALLBACK (1) - reduce learning rate on plateau
-            if (patience > 20) and (epoch_val_loss > best_val_loss):
-                patience = 0
-                new_lr = optimizer.learning_rate.numpy() * 0.5
-                maybe_save_best_model(model, epoch_val_loss, epoch, model_name)
+            if (state.patience > config.reduce_lr_patience) and (epoch_val_loss > state.best_val_loss):
+                state.patience = 0
+                state.current_lr = optimizer.learning_rate.numpy() * 0.5
+                maybe_save_best_model(model, epoch_val_loss, epoch, config.model_name)
 
-                if new_lr >= 1e-7:
-                    optimizer.learning_rate.assign(new_lr)
-                    print(f'Reduced learning rate to {new_lr}')
+                if state.current_lr >= 1e-7:
+                    optimizer.learning_rate.assign(state.current_lr)
+                    print(f'Reduced learning rate to {state.current_lr}')
 
             # Callback (2) - check for the best model and save at the checkpoint
-            if epoch_val_loss < best_val_loss:
-                maybe_save_best_model(model, epoch_val_loss, epoch, model_name)
-                patience = 0
-                stop_callback = 0
-                best_val_loss = epoch_val_loss
+            if epoch_val_loss < state.best_val_loss:
+                maybe_save_best_model(model, epoch_val_loss, epoch, config.model_name)
+                state.patience = 0
+                state.stop_callback = 0
+                state.best_val_loss = epoch_val_loss
             
             else:
-                patience += 1
-                stop_callback += 1
+                state.patience += 1
+                state.stop_callback += 1
 
             # Callback (3) - plot and save predictions
             if epoch % 10 == 0:
@@ -316,12 +364,12 @@ def main():
                 plt.close(fig1)
                 
             # CALLBACK (4) - check if early stopping condition is met
-            if stop_callback > 65:
+            if state.stop_callback > 65:
                 print('Early stopping triggered')
                 break
             gc.collect()
             elapsed_time = time.time() - start_time
-            print(f"\n\nEpoch {epoch + 1}/{epochs} completed in {elapsed_time:.2f} seconds - patience: {patience} - stop_callback: {stop_callback}\n\n")
+            print(f"\n\nEpoch {epoch + 1}/{config.epochs} completed in {elapsed_time:.2f} seconds - patience: {state.patience} - stop_callback: {state.stop_callback}\n\n")
 
 # Entry point for the script
 if __name__ == "__main__":

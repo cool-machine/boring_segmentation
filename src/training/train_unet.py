@@ -11,7 +11,7 @@ if root_dir not in sys.path:
 print(f"This is the root directory: {root_dir}")
 
 # Import custom callbacks and utilities
-from src.callbacks import (
+from src.callbacks.callbacks import (
     create_early_stopping,
     create_reduce_lr,
     create_top_k_checkpoint,
@@ -44,7 +44,7 @@ def main():
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
     # Set the experiment name in MLflow
-    experiment_name = "unet_experiment_v101"
+    experiment_name = "unet_experiment_15-02-2025-v1"
     mlflow.set_experiment(experiment_name)
 
     # Load training and validation datasets
@@ -65,7 +65,7 @@ def main():
     callbacks = [
         create_early_stopping(patience=15),
         create_reduce_lr(patience=10),
-        create_top_k_checkpoint(checkpoint_dir='outputs/checkpoints', top_k=3),
+        create_top_k_checkpoint(checkpoint_dir='output/unet/checkpoints', top_k=3),
         CustomHistory(),
         plot_results,
     ]

@@ -193,49 +193,6 @@ def augment_image_and_label(image, label, augment_prob=0.3):
     return image, label
 
 
-def load_dataset_unet(train_batch_size=1, valid_batch_size=1):
-    """
-    Create train and validation tf.data.Datasets suitable for U-Net training.
-
-    Args:
-        train_batch_size (int): Batch size for the training data.
-        valid_batch_size (int): Batch size for the validation data.
-
-    Returns:
-        tuple: (dataset_train, dataset_valid) as tf.data.Dataset objects
-    """
-    datasets = get_datasets()
-
-    train_image_paths = datasets["train_images"]
-    train_mask_paths = datasets["train_masks"]
-    val_image_paths = datasets["valid_images"]
-    val_mask_paths = datasets["valid_masks"]
-
-    dataset_train = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mask_paths))
-    dataset_valid = tf.data.Dataset.from_tensor_slices((val_image_paths, val_mask_paths))
-
-    # Read and decode images and labels
-    dataset_train = dataset_train.map(lambda img, msk: (read_image(img), read_label(msk)), num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(lambda img, msk: (read_image(img), read_label(msk)), num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Map labels to reduced classes
-    original_classes, class_mapping, new_labels = retrieve_mask_mappings()
-    dataset_train = dataset_train.map(lambda im, m: (im, map_labels_tf(m, original_classes, class_mapping, new_labels)), 
-                                      num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(lambda im, m: (im, map_labels_tf(m, original_classes, class_mapping, new_labels)), 
-                                      num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Normalize and augment
-    dataset_train = dataset_train.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_train = dataset_train.map(augment_image_and_label, num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Batch and prefetch
-    dataset_train = dataset_train.batch(train_batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.batch(valid_batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-
-    return dataset_train, dataset_valid
-
 
 def resize_images(image, label):
     """
@@ -265,50 +222,68 @@ def resize_images(image, label):
     return output_image, output_mask
 
 
-def load_dataset_segf(train_batch_size=1, valid_batch_size=1):
+
+def _prepare_dataset(image_paths, mask_paths, batch_size, is_train=True, resize_fn=None):
     """
-    Create a dataset for a Segformer-like model, resizing and normalizing images and labels.
+    Prepares a tf.data.Dataset with common steps including reading, label mapping,
+    normalization, optional augmentation, and optional resizing.
 
     Args:
-        batch_size (int): Batch size for the dataset.
+        image_paths (list): List of image file paths.
+        mask_paths (list): List of corresponding mask file paths.
+        batch_size (int): The batch size to use.
+        is_train (bool): Whether to apply augmentation (only for training).
+        resize_fn (function, optional): A function to resize images/labels. If provided, it will be applied.
 
     Returns:
-        tf.data.Dataset: The training dataset.
+        tf.data.Dataset: The prepared dataset.
+    """
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
+    
+    # Read and decode images and labels.
+    dataset = dataset.map(lambda img, msk: (read_image(img), read_label(msk)), num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Map the labels to the reduced set.
+    original_classes, class_mapping, new_labels = retrieve_mask_mappings()
+    dataset = dataset.map(lambda im, m: (im, map_labels_tf(m, original_classes, class_mapping, new_labels)),
+                          num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Normalize the images.
+    dataset = dataset.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Apply augmentation only to training data.
+    if is_train:
+        dataset = dataset.map(augment_image_and_label, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Optionally apply a resizing function.
+    if resize_fn:
+        dataset = dataset.map(resize_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Batch and prefetch.
+    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+    
+    return dataset
+
+
+def load_dataset_unet(train_batch_size=1, valid_batch_size=1):
+    """
+    Create training and validation tf.data.Datasets for U-Net without resizing.
     """
     datasets = get_datasets()
+    train_dataset = _prepare_dataset(datasets["train_images"], datasets["train_masks"],
+                                     batch_size=train_batch_size, is_train=True, resize_fn=None)
+    valid_dataset = _prepare_dataset(datasets["valid_images"], datasets["valid_masks"],
+                                     batch_size=valid_batch_size, is_train=False, resize_fn=None)
+    return train_dataset, valid_dataset
 
-    train_image_paths = datasets["train_images"]
-    train_mask_paths = datasets["train_masks"]
-    val_image_paths = datasets["valid_images"]
-    val_mask_paths = datasets["valid_masks"]
 
-    dataset_train = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mask_paths))
-    dataset_valid = tf.data.Dataset.from_tensor_slices((val_image_paths, val_mask_paths))
-
-    # Read and decode images and labels
-    dataset_train = dataset_train.map(lambda img, msk: (read_image(img), read_label(msk)), num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(lambda img, msk: (read_image(img), read_label(msk)), num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Map labels to reduced classes
-    original_classes, class_mapping, new_labels = retrieve_mask_mappings()
-    dataset_train = dataset_train.map(lambda im, m: (im, map_labels_tf(m, original_classes, class_mapping, new_labels)), 
-                                      num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(lambda im, m: (im, map_labels_tf(m, original_classes, class_mapping, new_labels)), 
-                                      num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Normalize and augment
-    dataset_train = dataset_train.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_train = dataset_train.map(augment_image_and_label, num_parallel_calls=tf.data.AUTOTUNE)
-
-    # resize
-    dataset_train = dataset_train.map(resize_images, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.map(resize_images, num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Batch and prefetch
-    dataset_train = dataset_train.batch(train_batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-    dataset_valid = dataset_valid.batch(valid_batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-
-    # label.set_shape([1024, 2048, 1])
-
-    return dataset_train, dataset_valid
+def load_dataset_segf(train_batch_size=1, valid_batch_size=1):
+    """
+    Create training and validation tf.data.Datasets for a Segformer-like model with resizing.
+    """
+    datasets = get_datasets()
+    train_dataset = _prepare_dataset(datasets["train_images"], datasets["train_masks"],
+                                     batch_size=train_batch_size, is_train=True, resize_fn=resize_images)
+    valid_dataset = _prepare_dataset(datasets["valid_images"], datasets["valid_masks"],
+                                     batch_size=valid_batch_size, is_train=False, resize_fn=resize_images)
+    return train_dataset, valid_dataset

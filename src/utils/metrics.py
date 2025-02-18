@@ -22,6 +22,8 @@ def cust_accuracy(y_true, y_pred):
     return tf.keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
 
 
+
+
 # Custom Dice Coefficient
 def dice_coefficient(y_true, y_pred):
     """
@@ -115,3 +117,48 @@ def iou(y_true, y_pred):
     denominator = tf.cast(union, tf.float32) + 1e-7 
 
     return  nominator / denominator
+
+# # Custom IoU (Intersection over Union)
+# def iou(y_true: tf.Tensor, y_pred: tf.Tensor, smooth: float = 1e-6) -> tf.Tensor:
+#     """
+#     Calculate Intersection over Union (IoU).
+    
+#     Args:
+#         y_true: Ground truth masks
+#         y_pred: Predicted masks (logits)
+#         smooth: Smoothing factor to avoid division by zero
+    
+#     Returns:
+#         IoU score (between 0 and 1)
+#     """
+#     y_pred = tf.nn.softmax(y_pred, axis=-1)  # Convert logits to probabilities
+#     y_true = tf.cast(y_true, tf.float32)
+    
+#     intersection = tf.reduce_sum(y_true * y_pred)
+#     union = tf.reduce_sum(y_true) + tf.reduce_sum(y_pred) - intersection
+    
+#     iou = (intersection + smooth) / (union + smooth)
+#     return iou
+#     # return tf.clip_by_value(iou, 0.0, 1.0)
+
+# def dice_coefficient(y_true: tf.Tensor, y_pred: tf.Tensor, smooth: float = 1e-6) -> tf.Tensor:
+#     """
+#     Calculate Dice coefficient.
+    
+#     Args:
+#         y_true: Ground truth masks
+#         y_pred: Predicted masks (logits)
+#         smooth: Smoothing factor to avoid division by zero
+    
+#     Returns:
+#         Dice coefficient (between 0 and 1)
+#     """
+#     y_pred = tf.nn.softmax(y_pred, axis=-1)  # Convert logits to probabilities
+#     y_true = tf.cast(y_true, tf.float32)
+    
+#     intersection = tf.reduce_sum(y_true * y_pred)
+#     union = tf.reduce_sum(y_true) + tf.reduce_sum(y_pred)
+    
+#     dice = (2. * intersection + smooth) / (union + smooth)
+#     return dice 
+#     # tf.clip_by_value(dice, 0.0, 1.0)
