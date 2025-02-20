@@ -46,6 +46,7 @@ tf.config.experimental.enable_op_determinism()
 # Set TensorFlow deterministic behavior
 os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # Set a global seed for all random ops
 tf.random.set_seed(33)
@@ -75,9 +76,9 @@ for logger_name in loggers_to_silence:
 class TrainingConfig:
     """Configuration for training parameters"""
     learning_rate: float = 0.0001
-    epochs: int = 10 # Changed from 1000 as per your edit
-    train_batch_size: int = 32
-    valid_batch_size: int = 16
+    epochs: int = 3 # Changed from 1000 as per your edit
+    train_batch_size: int = 3
+    valid_batch_size: int = 2
     early_stopping_patience: int = 65
     reduce_lr_patience: int = 20
     model_name: str = "segformer"
@@ -172,7 +173,7 @@ def main():
             val_dice_total = 0
 
             # Training loop
-            for images, masks in dataset_train:
+            for images, masks in dataset_train.take(3):
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -198,7 +199,7 @@ def main():
             during_training_dice = during_training_dice_total / during_training_steps
 
             # Compute metrics on training data after training
-            for images, masks in dataset_train:
+            for images, masks in dataset_train.take(3):
                 step(images=images,  
                      masks=masks,
                      model=model,
@@ -229,7 +230,7 @@ def main():
             epoch_train_dice = train_dice_total / train_steps
             
             # Validation loop
-            for val_images, val_masks in dataset_val:
+            for val_images, val_masks in dataset_val.take(3):
                 
                 # shape val_images: [B, C, H, W]
                 # shape val_masks: [B, C, H, W]
