@@ -18,11 +18,13 @@ from tensorflow.keras.metrics import Mean, SparseCategoricalAccuracy
 
 # Local application imports
 from src.data.processor import load_dataset_segf
-from src.utils.metrics import dice_coefficient, iou
-from src.utils.optimizers import segf_optimizer
+
+from src.params.metrics import dice_coefficient, iou
+from src.params.optimizers import segf_optimizer
+from src.params.loss_funcs import sparse_categorical_crossentropy_loss
+from src.params.architectures.segformer import segformer
+
 from src.utils.helpers import get_mlflow_uri
-from src.utils.loss_funcs import sparse_categorical_crossentropy_loss
-from src.architectures.segformer import segformer
 from src.training.step import step
 from src.callbacks.callbacks import (
     plot_segmentation_results,
@@ -30,6 +32,7 @@ from src.callbacks.callbacks import (
     CustomHistory,
     maybe_save_best_model
 )
+
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
@@ -46,7 +49,7 @@ tf.config.experimental.enable_op_determinism()
 # Set TensorFlow deterministic behavior
 os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # Set a global seed for all random ops
 tf.random.set_seed(33)
