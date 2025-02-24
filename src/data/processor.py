@@ -286,4 +286,6 @@ def load_dataset_segf(train_batch_size=1, valid_batch_size=1):
                                      batch_size=train_batch_size, is_train=True, resize_fn=resize_images)
     valid_dataset = _prepare_dataset(datasets["valid_images"], datasets["valid_masks"],
                                      batch_size=valid_batch_size, is_train=False, resize_fn=resize_images)
-    return train_dataset, valid_dataset
+    test_dataset = _prepare_dataset(datasets["test_images"], datasets["test_masks"],
+                                     batch_size=valid_batch_size, is_train=False, resize_fn=resize_images)
+    return train_dataset, valid_dataset, test_dataset

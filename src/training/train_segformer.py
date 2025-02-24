@@ -141,7 +141,7 @@ def main():
     with mlflow.start_run(run_name=f"Segformer Training - {experiment_name} "):
 
         # Load training and validation datasets
-        dataset_train, dataset_val = load_dataset_segf(
+        dataset_train, dataset_val, _ = load_dataset_segf(
             train_batch_size=config.train_batch_size,
             valid_batch_size=config.valid_batch_size
         )
