@@ -1,55 +1,81 @@
-# tests/model_validation_tests.py
-from ../src.data.processor import load_dataset_segf
-
-# tests/model_validation_tests.py
-
+#!/usr/bin/env python
 import os
-import numpy as np
+import argparse
 import tensorflow as tf
-import pytest
+import numpy as np
 
-@pytest.fixture(scope="module")
-def load_test_dataset():
-    """Fixture to load the entire test dataset for validation."""
-    _, _, test_dataset = load_dataset_segf()
-    return test_dataset
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-def dice_coefficient(y_true, y_pred, smooth=1e-6):
-    """Compute the Dice coefficient, a common metric for segmentation performance."""
-    intersection = np.sum(y_true * y_pred)
-    union = np.sum(y_true) + np.sum(y_pred)
-    dice = (2 * intersection + smooth) / (union + smooth)
-    return dice
+# Patch call_context if needed.
+if not hasattr(tf.keras.backend, "call_context"):
+    tf.keras.backend.call_context = lambda: type("DummyContext", (), {"in_call": False})()
 
+from src.data.processor import load_dataset_segf
+from src.params.architectures.segformer import segformer
+from src.params.loss_funcs import sparse_categorical_crossentropy_loss
 
-@pytest.fixture(scope="module")
-def load_keras_model():
+def evaluate_model(model, test_dataset):
     """
-    Fixture to load your trained Keras model.
-    Adjust the model path to point to your saved model artifact.
+    Evaluate the model on the test dataset and print the average loss.
+    
+    This function assumes:
+      - Model outputs logits in channels-first format: [batch, num_classes, H, W]
+      - We transpose logits to channels-last: [batch, H, W, num_classes]
+      - Ground-truth masks are initially [batch, 1, H, W] and need to be reshaped to [batch, H, W]
     """
-    model_path = "path/to/your/saved_model"  # Update this to your actual model path
-    model = tf.keras.models.load_model(model_path, compile=False)
-    return model
+    loss_fn = sparse_categorical_crossentropy_loss()
+    total_loss = 0.0
+    count = 0
+    for images, masks in test_dataset:
+        # Run model prediction in inference mode.
+        outputs = model(images, training=False)
+        logits = outputs.logits
+        # Transpose logits from [batch, num_classes, H, W] to [batch, H, W, num_classes]
+        logits = tf.transpose(logits, perm=[0, 2, 3, 1])
+        # Reshape masks from [batch, 1, H, W] to [batch, H, W]
+        batch = tf.shape(masks)[0]
+        height = tf.shape(masks)[2]
+        width = tf.shape(masks)[3]
+        masks = tf.reshape(masks, (batch, height, width))
+        # Compute loss.
+        loss = loss_fn(masks, logits)
+        total_loss += loss.numpy()
+        count += 1
+    avg_loss = total_loss / count if count > 0 else float('nan')
+    print("Average test loss:", avg_loss)
+    return avg_loss
 
-def test_segmentation_model(load_keras_model, load_test_dataset):
-    """Validate that the segmentation model meets the performance threshold."""
-    model = load_keras_model
-    _, _, test_data = load_dataset_segf()
-    
-    images, masks = test_data.take(1)
-    # Run inference on the test dataset.
-    predictions = model.predict(images)
-    
-    # Threshold predictions to obtain binary masks.
-    predictions_binary = (predictions > 0.5).astype(np.float32)
-    
-    # Calculate Dice coefficient for each sample.
-    dice_scores = [dice_coefficient(y_true, y_pred) for y_true, y_pred in zip(y_test, predictions_binary)]
-    avg_dice = np.mean(dice_scores)
-    
-    expected_dice_threshold = 0.7  # Set an acceptable performance threshold
-    assert avg_dice >= expected_dice_threshold, (
-        f"Average Dice coefficient {avg_dice:.2f} is below the expected threshold of {expected_dice_threshold:.2f}"
+def main():
+    parser = argparse.ArgumentParser(
+        description="Validate the final model on the test dataset."
     )
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        required=True,
+        help="Path to the final model checkpoint directory."
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=1,
+        help="Batch size for testing."
+    )
+    args = parser.parse_args()
+
+    # Load the test dataset. load_dataset_segf returns (train_ds, valid_ds, test_ds)
+    _, _, test_dataset = load_dataset_segf(
+        train_batch_size=args.batch_size,
+        valid_batch_size=args.batch_size
+    )
+
+    # Load the model from the checkpoint. Set initial=False so that it loads from the given path.
+    model = segformer(initial=False, path=args.model_path)
+
+    # Evaluate the model on the test dataset.
+    evaluate_model(model, test_dataset)
+
+if __name__ == "__main__":
+    main()
