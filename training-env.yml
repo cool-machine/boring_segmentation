@@ -1,0 +1,29 @@
+name: training-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - tqdm
+  - seaborn
+  - scipy
+  - transformers
+  - datasets
+  - pytorch=2.4.1
+  - torchvision=0.19.1
+  - torchaudio=2.4.1
+  - tensorflow=2.17.0
+  - pip:
+      - azureml-core==1.57.0
+      - azureml-mlflow==1.57.0
+      - azure-ai-ml==1.23.1
+      - mlflow
+      - opencv-python
+      - pyjwt
+      - requests
+      - protobuf

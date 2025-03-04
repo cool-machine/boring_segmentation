@@ -1,0 +1,17 @@
+.env*
+*aml*
+.aml
+*github*
+dataset/
+*copy*
+*old*
+.pytest*
+
+**/*aml*
+**/*.ipynb_checkpoints*
+**/*config.py*
+
+__pycache__/
+__pycache/
+
+!env

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Image Mask Generation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .image-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .image-list li {
+      padding: 5px;
+      cursor: pointer;
+      color: blue;
+    }
+    .image-list li:hover {
+      text-decoration: underline;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .results img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Image Selection</h1>
+  <p>Please choose one of the test images below to generate its mask:</p>
+  <ul class="image-list">
+    {% for image in images %}
+      <li onclick="selectImage('{{ image }}')">{{ image }}</li>
+    {% endfor %}
+  </ul>
+  
+  <div class="results" id="results">
+    <!-- The original image, the prediction, and the label will appear here -->
+  </div>
+
+  <script>
+    function selectImage(imageName) {
+      // Show a loading message
+      document.getElementById('results').innerHTML = "<p>Processing " + imageName + "...</p>";
+
+      // Send the selected image name to the backend model for processing
+      fetch('/predict/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ image_name: imageName })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Update the page with the returned URLs and label
+        document.getElementById('results').innerHTML = `
+          <h2>Results for ${imageName}</h2>
+          <div>
+            <h3>Original Image</h3>
+            <img src="${data.original}" alt="Original Image">
+          </div>
+          <div>
+            <h3>Predicted Mask</h3>
+            <img src="${data.prediction}" alt="Predicted Mask">
+          </div>
+          <div>
+            <h3>Label</h3>
+            <p>${data.label}</p>
+          </div>
+        `;
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('results').innerHTML = "<p>Error processing the image.</p>";
+      });
+    }
+  </script>
+</body>
+</html>

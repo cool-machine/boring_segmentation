@@ -1,1 +1,1 @@
-Toy code to fine-tune and experiment a Transformer based image segmentation model (Segformer) and compare it to a traditional encoder-decoder U-net.
+This repository provides a framework for fine-tuning and experimenting with Transformer-based image segmentation models, specifically Segformer, and comparing their performance against a traditional encoder-decoder architecture like U-Net.

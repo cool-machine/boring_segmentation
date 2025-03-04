@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+command: python submit_training.py
+environment: azureml:training-env:latest  # Uses the registered environment
+compute: gpu-cluster
+code: ./src/scheduling
+experiment_name: scheduled-training

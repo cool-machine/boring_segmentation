@@ -3,6 +3,10 @@ import os
 import pytest
 from transformers import TFSegformerForSemanticSegmentation, SegformerConfig
 
+
+import tensorflow as tf
+import keras
+from keras import layers, models
 # Add the src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../src')))
 
@@ -45,12 +49,7 @@ def test_segformer_non_initial(monkeypatch):
 
 
 
-import sys
-import os
-import pytest
-import tensorflow as tf
-import keras
-from keras import layers, models
+
 
 # Add the src directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../src')))
