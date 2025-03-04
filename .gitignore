@@ -1,12 +1,12 @@
 .env*
-*aml*
 .aml
-*github*
+
 dataset/
-*copy*
-*old*
 .pytest*
 
+**/*github*
+**/*copy*
+**/*old*
 **/*aml*
 **/*.ipynb_checkpoints*
 **/*config.py*
