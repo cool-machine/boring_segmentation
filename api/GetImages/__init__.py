@@ -1,0 +1,75 @@
+# api/GetImages/__init__.py
+
+import logging
+import azure.functions as func
+import json
+import os
+import sys
+from pathlib import Path
+
+# Add project root to path
+script_path = Path(__file__).resolve()
+project_root = script_path.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.append(str(project_root))
+
+
+# Import our improved utility functions
+from src.utils.azure_utils import list_blobs
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request to get images.')
+    
+    try:
+        # Get container name from request or use default
+        container_name = req.params.get('container_name')
+        images_path = req.params.get('images_path')
+        masks_path = req.params.get('masks_path')
+        if not container_name:
+            # Check if AZURE_IMAGES_CONTAINER_NAME is set
+            container_name = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
+        
+        logging.info(f"Using container: {container_name}")
+        logging.info(f"Images path filter: {images_path}")
+        logging.info(f"Masks path filter: {masks_path}")
+
+        # List blobs in the container with image extensions
+        all_blobs = list_blobs(container_name=container_name)
+        
+        # Filter for image files
+        image_blobs = []
+        for blob in all_blobs:
+            # Get the blob name as a string
+            blob_name = blob.name
+            
+            # Check for standard image patterns
+            if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                # Apply images_path filter if provided
+                if images_path and not (blob_name.startswith(images_path) or f'/{images_path}/' in blob_name):
+                    continue
+                
+                # Look for specific patterns
+                if ('_leftImg8bit' in blob_name or 
+                    '/images/' in blob_name.lower() or 
+                    blob_name.startswith('images/')):
+                    image_blobs.append(blob_name)
+        
+        # logging.info(f"Found {len(image_blobs)} images in Azure container '{container_name}'")
+        
+        return func.HttpResponse(
+            json.dumps({
+                "images": image_blobs,
+                "container": container_name,
+                "source": "azure"
+            }),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as e:
+        logging.error(f"Error getting images: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500
+        )
