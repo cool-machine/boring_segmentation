@@ -19,3 +19,9 @@ __pycache/
 fresh-env
 .DS_Store
 **/.DS_Store
+
+# Azure Functions local settings with credentials
+local.settings.json
+**/local.settings.json
+.env
+**/.env
