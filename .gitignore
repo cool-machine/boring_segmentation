@@ -25,3 +25,5 @@ local.settings.json
 **/local.settings.json
 .env
 **/.env
+
+api/local.settings.json
