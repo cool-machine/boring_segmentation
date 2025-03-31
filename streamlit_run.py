@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Azure Function URLs - Use environment variables if available, otherwise default to localhost:7071
-AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", 'http://localhost:7071/api/GetImages')
-AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", 'http://localhost:7071/api/GetPrediction')
+
+AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", 'https://ocp8azurefunctions.azurewebsites.net/api/GetImages')
+AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", 'https://ocp8azurefunctions.azurewebsites.net/api/GetPrediction')
 
 # Log the URLs for debugging
 logger.info(f"GetImages URL: {AZURE_FUNCTION_URL_IMAGES}")
