@@ -1,6 +1,5 @@
 .env*
 .aml
-test/
 
 dataset/
 .pytest*
