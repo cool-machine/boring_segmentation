@@ -28,8 +28,12 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Azure Function URLs - Use environment variables if available, otherwise default to localhost:7071
-AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", "http://localhost:7071/api/GetImages")
-AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", "http://localhost:7071/api/GetPrediction")
+AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", 'http://localhost:7071/api/GetImages')
+AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", 'http://localhost:7071/api/GetPrediction')
+
+# Log the URLs for debugging
+logger.info(f"GetImages URL: {AZURE_FUNCTION_URL_IMAGES}")
+logger.info(f"GetPrediction URL: {AZURE_FUNCTION_URL_PREDICTION}")
 
 # Azure Storage container names
 AZURE_IMAGES_CONTAINER = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
@@ -61,9 +65,15 @@ def get_images():
     """Get list of available images from Azure Function"""
     try:
         logger.info(f"Requesting images from {AZURE_FUNCTION_URL_IMAGES}")
+    
+        # Ensure the URL doesn't have extra quotes
+        url = AZURE_FUNCTION_URL_IMAGES
+        if url.startswith('"') and url.endswith('"'):
+            url = url[1:-1]
+            logger.warning(f"Removed extra quotes from URL: {url}")
         
         response = requests.get(
-            AZURE_FUNCTION_URL_IMAGES,
+            url,
             params={
                 "container_name": AZURE_IMAGES_CONTAINER, 
                 "images_path": AZURE_IMAGES_PATH,
@@ -93,9 +103,14 @@ def get_prediction(image_path):
     """Get prediction for an image from Azure Function"""
     try:
         logger.info(f"Requesting prediction for {image_path}")
+        # Ensure the URL doesn't have extra quotes
+        url = AZURE_FUNCTION_URL_PREDICTION
+        if url.startswith('"') and url.endswith('"'):
+            url = url[1:-1]
+            logger.warning(f"Removed extra quotes from URL: {url}")
         
         response = requests.post(
-            AZURE_FUNCTION_URL_PREDICTION,
+            url,
             json={
                 "image_path": image_path,
                 "image_container": AZURE_IMAGES_CONTAINER,
