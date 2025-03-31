@@ -27,3 +27,6 @@ local.settings.json
 .env
 **/.env
 api/local.settings.json
+
+# Explicitly don't ignore streamlit_run.py
+!streamlit_run.py
