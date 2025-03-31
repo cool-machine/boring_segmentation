@@ -18,6 +18,11 @@ import tensorflow as tf
 import numpy as np
 import base64
 import io
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -38,9 +43,14 @@ AZURE_MODELS_PATH = os.environ.get("AZURE_MODELS_PATH", "models")
 
 
 def decode_png_bytes_to_image(png_bytes, channels=3):
-    decoded_bytes = base64.b64decode(png_bytes)
-    image_tensor = tf.io.decode_png(decoded_bytes, channels=channels)  # Adjust channels as needed
-    return image_tensor
+    try:
+        decoded_bytes = base64.b64decode(png_bytes)
+        image_tensor = tf.io.decode_png(decoded_bytes, channels=channels)  # Adjust channels as needed
+        return image_tensor
+    except Exception as e:
+        logger.error(f"Error decoding image: {str(e)}")
+        st.error(f"Error decoding image: {str(e)}")
+        return None
 
     
 def is_image_in_range(img_array):
@@ -50,6 +60,7 @@ def is_image_in_range(img_array):
 def get_images():
     """Get list of available images from Azure Function"""
     try:
+        logger.info(f"Requesting images from {AZURE_FUNCTION_URL_IMAGES}")
         
         response = requests.get(
             AZURE_FUNCTION_URL_IMAGES,
@@ -57,38 +68,53 @@ def get_images():
                 "container_name": AZURE_IMAGES_CONTAINER, 
                 "images_path": AZURE_IMAGES_PATH,
                 "masks_path": AZURE_MASKS_PATH,
-            }
+            },
+            timeout=30  # Add timeout to prevent hanging requests
         )
         
         if response.status_code == 200:
+            logger.info(f"Successfully retrieved images")
             return response.json()
         else:
-            st.error(f"Error getting images: {response.status_code} - {response.text}")
+            error_msg = f"Error getting images: {response.status_code} - {response.text}"
+            logger.error(error_msg)
+            st.error(error_msg)
             return {"images": []}
     except Exception as e:
         import traceback
-        st.error(f"Error connecting to Azure Function: {str(e)}")
+        error_msg = f"Error connecting to Azure Function: {str(e)}"
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        st.error(error_msg)
         st.error(f"Traceback: {traceback.format_exc()}")
         return {"images": []}
 
 def get_prediction(image_path):
     """Get prediction for an image from Azure Function"""
     try:
+        logger.info(f"Requesting prediction for {image_path}")
+        
         response = requests.post(
             AZURE_FUNCTION_URL_PREDICTION,
             json={
                 "image_path": image_path,
                 "image_container": AZURE_IMAGES_CONTAINER,
                 "model_container": AZURE_MODELS_CONTAINER,
-            }
+            },
+            timeout=60  # Add timeout for longer prediction operations
         )
         if response.status_code == 200:
+            logger.info(f"Successfully received prediction")
             return response.json()
         else:
-            st.error(f"Error getting prediction: {response.text}")
+            error_msg = f"Error getting prediction: {response.text}"
+            logger.error(error_msg)
+            st.error(error_msg)
             return None
     except Exception as e:
-        st.error(f"Error connecting to Azure Function: {str(e)}")
+        error_msg = f"Error connecting to Azure Function: {str(e)}"
+        logger.error(error_msg)
+        st.error(error_msg)
         return None
 
 #Plot results - plot colored segmentation

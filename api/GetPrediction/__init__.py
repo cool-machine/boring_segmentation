@@ -358,7 +358,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         
         # Get mask path from environment variable
-        azure_masks_path = os.environ.get("AZURE_STORAGE_MASK_PATH", "masks")
+        azure_masks_path = os.environ.get("AZURE_MASKS_PATH", "masks")
         logging.info(f"Using mask path from environment: {azure_masks_path}")
         
         # Extract the image filename and directory parts
@@ -539,5 +539,3 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
             status_code=500
         )
-
-# ... rest of the code remains the same ...
