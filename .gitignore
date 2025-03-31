@@ -5,7 +5,7 @@ testini/
 dataset/
 .pytest*
 
-**/*github*
+# **/*github*
 **/*copy*
 **/*old*
 **/*aml*
@@ -26,5 +26,4 @@ local.settings.json
 **/local.settings.json
 .env
 **/.env
-
 api/local.settings.json
