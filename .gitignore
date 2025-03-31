@@ -1,5 +1,6 @@
 .env*
 .aml
+testinio/
 
 dataset/
 .pytest*
