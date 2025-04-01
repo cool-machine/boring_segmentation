@@ -41,6 +41,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get images.')
     
     try:
+        # Log environment variables (excluding sensitive info)
+        env_vars = {k: v for k, v in os.environ.items() if not any(x in k.lower() for x in ['key', 'secret', 'password', 'connection'])}
+        logging.info(f"Environment variables: {json.dumps(env_vars)}")
+        
         # Get container name from request or use default
         container_name = req.params.get('container_name')
         images_path = req.params.get('images_path')
@@ -54,45 +58,47 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             container_name = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
             logging.info(f"Using default container name: {container_name}")
         
-        logging.info(f"Using container: {container_name}")
-        logging.info(f"Images path filter: {images_path}")
-        logging.info(f"Masks path filter: {masks_path}")
+        # logging.info(f"Using container: {container_name}")
+        # logging.info(f"Images path filter: {images_path}")
+        # logging.info(f"Masks path filter: {masks_path}")
 
-        # List blobs in the container with image extensions
-        all_blobs = list_blobs(container_name=container_name)
+        # # List blobs in the container with image extensions
+        # all_blobs = list_blobs(container_name=container_name)
         
-        # Filter for image files
-        image_blobs = []
-        for blob in all_blobs:
-            # Get the blob name as a string
-            blob_name = blob.name
+        # # Filter for image files
+        # image_blobs = []
+        # for blob in all_blobs:
+        #     # Get the blob name as a string
+        #     blob_name = blob.name
             
-            # Check for standard image patterns
-            if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                # Apply images_path filter if provided
-                if images_path and not (blob_name.startswith(images_path) or f'/{images_path}/' in blob_name):
-                    continue
+        #     # Check for standard image patterns
+        #     if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+        #         # Apply images_path filter if provided
+        #         if images_path and not (blob_name.startswith(images_path) or f'/{images_path}/' in blob_name):
+        #             continue
                 
-                # Look for specific patterns
-                if ('_leftImg8bit' in blob_name or 
-                    '/images/' in blob_name.lower() or 
-                    blob_name.startswith('images/')):
-                    image_blobs.append(blob_name)
+        #         # Look for specific patterns
+        #         if ('_leftImg8bit' in blob_name or 
+        #             '/images/' in blob_name.lower() or 
+        #             blob_name.startswith('images/')):
+        #             image_blobs.append(blob_name)
         
-        # logging.info(f"Found {len(image_blobs)} images in Azure container '{container_name}'")
+        # # logging.info(f"Found {len(image_blobs)} images in Azure container '{container_name}'")
         
         return func.HttpResponse(
             json.dumps({
-                "images": image_blobs,
+                "status": "success",
+                "message": "This is a test response from the simplified GetImages function",
+                "images": ["test_image1.jpg", "test_image2.jpg"],
                 "container": container_name,
-                "source": "azure"
+                "source": "test"
             }),
             mimetype="application/json",
             status_code=200
         )
 
     except Exception as e:
-        logging.error(f"Error getting images: {str(e)}")
+        logging.error(f"Error in simplified GetImages function: {str(e)}")
         import traceback
         tb = traceback.format_exc()
         logging.error(f"Traceback: {tb}")
