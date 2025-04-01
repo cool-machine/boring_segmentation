@@ -25,9 +25,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         container_name = req.params.get('container_name')
         images_path = req.params.get('images_path')
         masks_path = req.params.get('masks_path')
+        
+        # Log the parameters for debugging
+        logging.info(f"Request parameters: container_name={container_name}, images_path={images_path}, masks_path={masks_path}")
+        
         if not container_name:
             # Check if AZURE_IMAGES_CONTAINER_NAME is set
             container_name = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
+            logging.info(f"Using default container name: {container_name}")
         
         logging.info(f"Using container: {container_name}")
         logging.info(f"Images path filter: {images_path}")
