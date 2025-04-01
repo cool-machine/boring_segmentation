@@ -9,8 +9,11 @@ from pathlib import Path
 
 # Add project root to path
 script_path = Path(__file__).resolve()
-project_root = script_path.parent.parent.parent
 api_root = script_path.parent.parent
+sys.path.append(str(api_root / 'src' / 'utils'))
+project_root = script_path.parent.parent.parent
+
+
 if str(project_root) not in sys.path:
     sys.path.append(str(project_root))
 if str(api_root) not in sys.path:
@@ -22,20 +25,20 @@ logging.info(f"System path: {sys.path}")
 # Try different import paths
 try:
     # First try the local import
-    # from src.utils.azure_utils import list_blobs
+    from src.utils.azure_utils import list_blobs
     logging.info("Successfully imported list_blobs from src.utils.azure_utils")
 except ImportError as e:
     logging.error(f"Failed to import list_blobs from src.utils.azure_utils: {str(e)}")
     try:
         # Try relative import
-        # from ..src.utils.azure_utils import list_blobs
+        from ..src.utils.azure_utils import list_blobs
         logging.info("Successfully imported list_blobs from ..src.utils.azure_utils")
     except ImportError as e:
         logging.error(f"Failed to import list_blobs from ..src.utils.azure_utils: {str(e)}")
         # Final fallback - try to import directly
-        sys.path.append(str(api_root / 'src' / 'utils'))
-        # from azure_utils import list_blobs
-        logging.info("Successfully imported list_blobs directly from azure_utils")
+    
+# from azure_utils import list_blobs
+# logging.info("Successfully imported list_blobs directly from azure_utils")
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get images.')
@@ -58,38 +61,38 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             container_name = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
             logging.info(f"Using default container name: {container_name}")
         
-        # logging.info(f"Using container: {container_name}")
-        # logging.info(f"Images path filter: {images_path}")
-        # logging.info(f"Masks path filter: {masks_path}")
+        logging.info(f"Using container: {container_name}")
+        logging.info(f"Images path filter: {images_path}")
+        logging.info(f"Masks path filter: {masks_path}")
 
-        # # List blobs in the container with image extensions
-        # all_blobs = list_blobs(container_name=container_name)
+        # List blobs in the container with image extensions
+        all_blobs = list_blobs(container_name=container_name)
         
-        # # Filter for image files
-        # image_blobs = []
-        # for blob in all_blobs:
-        #     # Get the blob name as a string
-        #     blob_name = blob.name
+        # Filter for image files
+        image_blobs = []
+        for blob in all_blobs:
+            # Get the blob name as a string
+            blob_name = blob.name
             
-        #     # Check for standard image patterns
-        #     if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-        #         # Apply images_path filter if provided
-        #         if images_path and not (blob_name.startswith(images_path) or f'/{images_path}/' in blob_name):
-        #             continue
+            # Check for standard image patterns
+            if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                # Apply images_path filter if provided
+                if images_path and not (blob_name.startswith(images_path) or f'/{images_path}/' in blob_name):
+                    continue
                 
-        #         # Look for specific patterns
-        #         if ('_leftImg8bit' in blob_name or 
-        #             '/images/' in blob_name.lower() or 
-        #             blob_name.startswith('images/')):
-        #             image_blobs.append(blob_name)
+                # Look for specific patterns
+                if ('_leftImg8bit' in blob_name or 
+                    '/images/' in blob_name.lower() or 
+                    blob_name.startswith('images/')):
+                    image_blobs.append(blob_name)
         
-        # # logging.info(f"Found {len(image_blobs)} images in Azure container '{container_name}'")
+        # logging.info(f"Found {len(image_blobs)} images in Azure container '{container_name}'")
         
         return func.HttpResponse(
             json.dumps({
                 "status": "success",
-                "message": "This is a test response from the simplified GetImages function",
-                "images": ["test_image1.jpg", "test_image2.jpg"],
+                # "message": "This is a test response from the simplified GetImages function",
+                "images": image_blobs,
                 "container": container_name,
                 "source": "test"
             }),
