@@ -7,7 +7,7 @@ name: Build and deploy Python project to Azure Function App - ocp8azurefunctions
 on:
   push:
     branches:
-      - master
+      - azure-deployment
   workflow_dispatch:
 
 env:
