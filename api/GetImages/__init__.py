@@ -22,19 +22,19 @@ logging.info(f"System path: {sys.path}")
 # Try different import paths
 try:
     # First try the local import
-    from src.utils.azure_utils import list_blobs
+    # from src.utils.azure_utils import list_blobs
     logging.info("Successfully imported list_blobs from src.utils.azure_utils")
 except ImportError as e:
     logging.error(f"Failed to import list_blobs from src.utils.azure_utils: {str(e)}")
     try:
         # Try relative import
-        from ..src.utils.azure_utils import list_blobs
+        # from ..src.utils.azure_utils import list_blobs
         logging.info("Successfully imported list_blobs from ..src.utils.azure_utils")
     except ImportError as e:
         logging.error(f"Failed to import list_blobs from ..src.utils.azure_utils: {str(e)}")
         # Final fallback - try to import directly
         sys.path.append(str(api_root / 'src' / 'utils'))
-        from azure_utils import list_blobs
+        # from azure_utils import list_blobs
         logging.info("Successfully imported list_blobs directly from azure_utils")
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
