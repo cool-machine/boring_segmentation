@@ -10,12 +10,32 @@ from pathlib import Path
 # Add project root to path
 script_path = Path(__file__).resolve()
 project_root = script_path.parent.parent.parent
+api_root = script_path.parent.parent
 if str(project_root) not in sys.path:
     sys.path.append(str(project_root))
+if str(api_root) not in sys.path:
+    sys.path.append(str(api_root))
 
+# Log system path for debugging
+logging.info(f"System path: {sys.path}")
 
-# Import our improved utility functions
-from src.utils.azure_utils import list_blobs
+# Try different import paths
+try:
+    # First try the local import
+    from src.utils.azure_utils import list_blobs
+    logging.info("Successfully imported list_blobs from src.utils.azure_utils")
+except ImportError as e:
+    logging.error(f"Failed to import list_blobs from src.utils.azure_utils: {str(e)}")
+    try:
+        # Try relative import
+        from ..src.utils.azure_utils import list_blobs
+        logging.info("Successfully imported list_blobs from ..src.utils.azure_utils")
+    except ImportError as e:
+        logging.error(f"Failed to import list_blobs from ..src.utils.azure_utils: {str(e)}")
+        # Final fallback - try to import directly
+        sys.path.append(str(api_root / 'src' / 'utils'))
+        from azure_utils import list_blobs
+        logging.info("Successfully imported list_blobs directly from azure_utils")
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get images.')
@@ -73,8 +93,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     except Exception as e:
         logging.error(f"Error getting images: {str(e)}")
+        import traceback
+        tb = traceback.format_exc()
+        logging.error(f"Traceback: {tb}")
         return func.HttpResponse(
-            json.dumps({"error": str(e)}),
+            json.dumps({"error": str(e), "traceback": tb}),
             mimetype="application/json",
             status_code=500
         )
