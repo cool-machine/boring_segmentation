@@ -1,4 +1,3 @@
-# In app.py at the root
 import os
 import subprocess
 import sys
