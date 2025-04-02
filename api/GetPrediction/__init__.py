@@ -1,19 +1,24 @@
 import logging
 import azure.functions as func
 import json
+import base64
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get predictions.')
     
     try:
-        # Return a minimal static response
+        # Create a simple 1x1 pixel image in base64 format
+        # This is a valid base64 representation of a tiny transparent PNG
+        tiny_png_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        
+        # Return a minimal static response with valid base64 data
         return func.HttpResponse(
             json.dumps({
                 "status": "success",
-                "message": "This is a minimal test response",
-                "original": "test_image_data",
-                "ground_truth": "test_mask_data",
-                "prediction": "test_prediction_data",
+                "message": "This is a minimal test response with valid base64 data",
+                "original": tiny_png_base64,
+                "ground_truth": tiny_png_base64,
+                "prediction": tiny_png_base64,
                 "image_path": "test_image.jpg"
             }),
             mimetype="application/json",
