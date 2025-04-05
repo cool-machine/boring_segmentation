@@ -52,8 +52,17 @@ def create_simple_segmentation(image):
     mask_image = Image.fromarray(mask.astype(np.uint8))
     return mask_image
 
+
+
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get predictions.')
+    
+    # Log environment variables for debugging
+    logging.info("Function environment:")
+    for key, value in os.environ.items():
+        if "KEY" not in key and "SECRET" not in key and "PASSWORD" not in key:
+            logging.info(f"{key}: {value}")
     
     try:
         # Parse request body
