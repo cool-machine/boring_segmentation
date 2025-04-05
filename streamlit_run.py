@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Azure Function URLs - Use environment variables if available, otherwise default to localhost:7071
-
 AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", 'https://ocp8azurefunctions.azurewebsites.net/api/GetImages')
 AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", 'https://ocp8azurefunctions.azurewebsites.net/api/GetPrediction')
 
@@ -40,12 +39,10 @@ logger.info(f"GetPrediction URL: {AZURE_FUNCTION_URL_PREDICTION}")
 AZURE_IMAGES_CONTAINER = os.environ.get("AZURE_IMAGES_CONTAINER_NAME", "images1")
 AZURE_MODELS_CONTAINER = os.environ.get("AZURE_MODELS_CONTAINER_NAME", "models")
 
-
 # Azure images and masks path in container
 AZURE_IMAGES_PATH = os.environ.get("AZURE_IMAGES_PATH", "images")
 AZURE_MASKS_PATH = os.environ.get("AZURE_MASKS_PATH", "masks")
-AZURE_MODELS_PATH = os.environ.get("AZURE_MODELS_PATH", "models")
-
+AZURE_MODELS_PATH = os.environ.get("AZURE_MODELS_PATH", "segformer")
 
 def decode_png_bytes_to_image(png_bytes, channels=3):
     try:
@@ -57,10 +54,8 @@ def decode_png_bytes_to_image(png_bytes, channels=3):
         st.error(f"Error decoding image: {str(e)}")
         return None
 
-    
 def is_image_in_range(img_array):
     return np.all((img_array >= -0.01) & (img_array <= 1.01))
-
 
 def get_images():
     """Get list of available images from Azure Function"""
@@ -73,19 +68,35 @@ def get_images():
             url = url[1:-1]
             logger.warning(f"Removed extra quotes from URL: {url}")
         
-        response = requests.get(
-            url,
-            params={
-                "container_name": AZURE_IMAGES_CONTAINER, 
-                "images_path": AZURE_IMAGES_PATH,
-                "masks_path": AZURE_MASKS_PATH,
-            },
-            timeout=30  # Add timeout to prevent hanging requests
-        )
+        # Add a message to the user
+        with st.spinner("Fetching images from Azure Storage..."):
+            response = requests.get(
+                url,
+                params={
+                    "container_name": AZURE_IMAGES_CONTAINER, 
+                    "images_path": AZURE_IMAGES_PATH,
+                    "masks_path": AZURE_MASKS_PATH,
+                },
+                timeout=30  # Add timeout to prevent hanging requests
+            )
         
         if response.status_code == 200:
-            logger.info(f"Successfully retrieved images")
-            return response.json()
+            response_data = response.json()
+            logger.info(f"Successfully retrieved images: {len(response_data.get('images', []))} images found")
+            
+            # Log the source of the images (azure_storage or test)
+            source = response_data.get('source', 'unknown')
+            if source == 'azure_storage':
+                logger.info("Images retrieved from Azure Blob Storage")
+                st.success(f"Successfully loaded {len(response_data.get('images', []))} images from Azure Storage")
+            elif source == 'test':
+                logger.warning("Using test images instead of Azure Blob Storage")
+                st.warning("Using test images. Azure Storage connection may not be configured correctly.")
+                if 'error' in response_data:
+                    logger.error(f"Azure Storage error: {response_data['error']}")
+                    st.info(f"Azure Storage error: {response_data['error']}")
+            
+            return response_data
         else:
             error_msg = f"Error getting images: {response.status_code} - {response.text}"
             logger.error(error_msg)
@@ -146,7 +157,6 @@ def display_image_from_base64_matplotlib(image, mask=None, is_mask=False, is_pre
         caption (str): Caption for the image
     """
     try:
-        
         # Target size for display
         new_height, new_width = 512, 1024
         target_size = (new_height, new_width)
@@ -166,13 +176,15 @@ def display_image_from_base64_matplotlib(image, mask=None, is_mask=False, is_pre
         # Process the image
         if isinstance(image, tf.Tensor):
             image_np = image.numpy()
-        else:
+        elif isinstance(image, np.ndarray):
             image_np = image
-            
+        else:
+            raise ValueError("Image must be a TensorFlow tensor or NumPy array")
+        
         # Handle different image shapes
         if len(image_np.shape) == 4:
             image_np = image_np[0]
-            
+    
         # Handle channel-first format (e.g., shape is (C, H, W))
         if len(image_np.shape) == 3 and image_np.shape[0] <= 3:
             image_np = np.transpose(image_np, [1, 2, 0])
@@ -325,8 +337,6 @@ def main():
                             st.warning("Could not decode predicted mask")
                     else:
                         st.warning("Prediction not available in response")
-                    
-
     else:
         st.warning("No images found. Please check your Azure Storage connection and container name.")
 

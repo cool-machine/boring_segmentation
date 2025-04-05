@@ -15,8 +15,6 @@ dataset/
 __pycache__/
 __pycache/
 
-!env
-
 fresh-env
 .DS_Store
 **/.DS_Store
