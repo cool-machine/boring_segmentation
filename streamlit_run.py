@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-# Azure Function URLs - Use environment variables if available, otherwise default to localhost:7071
-AZURE_FUNCTION_URL_IMAGES = os.environ.get("AZURE_FUNCTION_URL_IMAGES", 'https://ocp8azurefunctions.azurewebsites.net/api/GetImages')
-AZURE_FUNCTION_URL_PREDICTION = os.environ.get("AZURE_FUNCTION_URL_PREDICTION", 'https://ocp8azurefunctions.azurewebsites.net/api/GetPrediction')
+# Azure Function URLs - Hardcoded to Azure cloud URLs
+AZURE_FUNCTION_URL_IMAGES = "https://ocp8azurefunctions.azurewebsites.net/api/GetImages"
+AZURE_FUNCTION_URL_PREDICTION = "https://ocp8azurefunctions.azurewebsites.net/api/GetPrediction"
 
 # Log the URLs for debugging
 logger.info(f"GetImages URL: {AZURE_FUNCTION_URL_IMAGES}")
@@ -79,37 +79,51 @@ def get_images():
                 },
                 timeout=30  # Add timeout to prevent hanging requests
             )
-        
-        if response.status_code == 200:
-            response_data = response.json()
-            logger.info(f"Successfully retrieved images: {len(response_data.get('images', []))} images found")
             
-            # Log the source of the images (azure_storage or test)
-            source = response_data.get('source', 'unknown')
-            if source == 'azure_storage':
-                logger.info("Images retrieved from Azure Blob Storage")
-                st.success(f"Successfully loaded {len(response_data.get('images', []))} images from Azure Storage")
-            elif source == 'test':
-                logger.warning("Using test images instead of Azure Blob Storage")
-                st.warning("Using test images. Azure Storage connection may not be configured correctly.")
-                if 'error' in response_data:
-                    logger.error(f"Azure Storage error: {response_data['error']}")
-                    st.info(f"Azure Storage error: {response_data['error']}")
+            # Log response status and content for debugging
+            logger.info(f"Response status code: {response.status_code}")
+            logger.info(f"Response headers: {response.headers}")
             
-            return response_data
-        else:
-            error_msg = f"Error getting images: {response.status_code} - {response.text}"
-            logger.error(error_msg)
-            st.error(error_msg)
-            return {"images": []}
+            try:
+                # Try to get response content as text
+                content = response.text
+                logger.info(f"Response content: {content[:500]}...")  # Log first 500 chars
+            except Exception as content_error:
+                logger.error(f"Error getting response content: {str(content_error)}")
+            
+            # Check if response is successful
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    logger.info(f"Successfully parsed JSON response")
+                    
+                    # Check if the response contains the expected data
+                    if "images" in data:
+                        logger.info(f"Found {len(data['images'])} images in response")
+                        return data
+                    else:
+                        error_msg = f"Response doesn't contain 'images' field: {data}"
+                        logger.error(error_msg)
+                        st.error(error_msg)
+                        return {"images": [], "status": "error", "message": error_msg}
+                except ValueError as json_error:
+                    error_msg = f"Error parsing JSON response: {str(json_error)}"
+                    logger.error(error_msg)
+                    st.error(error_msg)
+                    return {"images": [], "status": "error", "message": error_msg}
+            else:
+                error_msg = f"Error getting images: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                st.error(error_msg)
+                return {"images": [], "status": "error", "message": error_msg}
     except Exception as e:
-        import traceback
         error_msg = f"Error connecting to Azure Function: {str(e)}"
         logger.error(error_msg)
-        logger.error(traceback.format_exc())
         st.error(error_msg)
-        st.error(f"Traceback: {traceback.format_exc()}")
-        return {"images": []}
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"Traceback: {tb}")
+        return {"images": [], "status": "error", "message": error_msg}
 
 def get_prediction(image_path):
     """Get prediction for an image from Azure Function"""
