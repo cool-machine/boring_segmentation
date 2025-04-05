@@ -4,6 +4,8 @@ import logging
 import azure.functions as func
 import json
 import os
+# Add Azure Storage SDK import to test if it's available
+from azure.storage.blob import BlobServiceClient
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get images.')
@@ -11,6 +13,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         # Log basic information
         logging.info("Minimal GetImages function executed")
+        logging.info("Azure Storage SDK imported successfully")
         
         # Return a simple successful response
         return func.HttpResponse(
