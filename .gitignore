@@ -5,6 +5,10 @@ testinn/
 dataset/
 .pytest*
 
+.funcignore
+.vscode/
+
+
 # **/*github*
 **/*copy*
 **/*old*
