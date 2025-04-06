@@ -65,6 +65,9 @@ jobs:
           path: |
             release.zip
             !venv/
+      - name: Verify contents of release.zip
+        run: |
+            unzip -l release.zip
 
   deploy:
     runs-on: ubuntu-latest
