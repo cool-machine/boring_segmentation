@@ -82,6 +82,17 @@ jobs:
           unzip release.zip
           ls -la
         
+      - name: Print detailed directory structure
+        run: |
+          echo "==== Directory Structure After Extraction ===="
+          find . -type f -not -path "*/\.*" | sort
+          
+          echo "==== Contents of api directory ===="
+          ls -la api/
+          
+          echo "==== Contents of api/requirements.txt ===="
+          cat api/requirements.txt
+        
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -95,6 +106,6 @@ jobs:
         with:
           app-name: 'ocp8azurefunctions'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: api
           scm-do-build-during-deployment: true
           enable-oryx-build: true
