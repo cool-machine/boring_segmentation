@@ -59,7 +59,7 @@ jobs:
           path: |
             release.zip
             !venv/
-            
+
       - name: Verify contents of release.zip
         run: |
             unzip -l release.zip
@@ -75,10 +75,7 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip     
+          name: python-app  
         
       - name: Login to Azure
         uses: azure/login@v2
@@ -93,6 +90,6 @@ jobs:
         with:
           app-name: 'ocp8azurefunctions'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: release.zip
           scm-do-build-during-deployment: true
           enable-oryx-build: true
