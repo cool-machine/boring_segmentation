@@ -4,6 +4,7 @@ import logging
 import azure.functions as func
 import json
 import os
+import subprocess
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request to get images.')
@@ -26,6 +27,40 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         except ImportError as e:
             package_status["numpy"] = f"Not available: {str(e)}"
         
+        # Get pip freeze output
+        pip_freeze = []
+        try:
+            result = subprocess.run(['pip', 'freeze'], capture_output=True, text=True)
+            pip_freeze = result.stdout.strip().split('\n') if result.stdout else []
+        except Exception as e:
+            pip_freeze = [f"Error running pip freeze: {str(e)}"]
+        
+        # Get diagnostics
+        diagnostics = {}
+        diagnostics["python_version"] = f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
+        diagnostics["os"] = os.sys.platform
+        
+        # Get environment diagnostics
+        env_diagnostics = {}
+        env_diagnostics["environment_variables"] = dict(os.environ)
+        
+        # Check if this is a package verification request
+        verify_packages = req.params.get('verify_packages')
+        if verify_packages and verify_packages.lower() == 'true':
+            # Return only package status for verification
+            return func.HttpResponse(
+                json.dumps({
+                    "status": "success",
+                    "message": "Package verification completed",
+                    "package_status": package_status,
+                    "diagnostics": diagnostics,
+                    "environment": env_diagnostics,
+                    "pip_freeze": pip_freeze
+                }),
+                mimetype="application/json",
+                status_code=200
+            )
+        
         # Return a simple successful response with test images and package status
         return func.HttpResponse(
             json.dumps({
@@ -34,7 +69,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 "images": ["test_image1.jpg", "test_image2.jpg", "test_image3.jpg"],
                 "container": "test",
                 "source": "test",
-                "package_status": package_status
+                "package_status": package_status,
+                "diagnostics": diagnostics,
+                "environment": env_diagnostics,
+                "pip_freeze": pip_freeze
             }),
             mimetype="application/json",
             status_code=200

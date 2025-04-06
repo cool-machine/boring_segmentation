@@ -93,6 +93,13 @@ jobs:
           echo "==== Contents of api/requirements.txt ===="
           cat api/requirements.txt
         
+      - name: Install dependencies explicitly
+        run: |
+          echo "Installing dependencies from api/requirements.txt..."
+          pip install -r api/requirements.txt
+          echo "Installed packages:"
+          pip freeze
+        
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -109,3 +116,36 @@ jobs:
           package: api
           scm-do-build-during-deployment: true
           enable-oryx-build: true
+          respect-funcignore: false
+
+      - name: 'Check installed packages in Azure Function App'
+        run: |
+          echo "Checking installed packages in Azure Function App environment..."
+          # Wait for deployment to complete
+          sleep 30
+          
+          # Make a GET request to the function with verify_packages=true
+          RESPONSE=$(curl -s "https://ocp8azurefunctions.azurewebsites.net/api/GetImages?verify_packages=true")
+          
+          # Extract and display pip freeze information
+          echo "Installed packages in Azure Function App:"
+          echo "$RESPONSE" | grep -o '"pip_freeze":\[.*\]' | sed 's/"pip_freeze":\[//g' | sed 's/\]//g' | sed 's/,/\n/g' | sed 's/"//g'
+          
+          # Check for specific packages
+          if echo "$RESPONSE" | grep -q "numpy=="; then
+            echo "✅ numpy is installed"
+          else
+            echo "❌ numpy is NOT installed"
+          fi
+          
+          if echo "$RESPONSE" | grep -q "azure-storage-blob=="; then
+            echo "✅ azure-storage-blob is installed"
+          else
+            echo "❌ azure-storage-blob is NOT installed"
+          fi
+          
+          if echo "$RESPONSE" | grep -q "matplotlib=="; then
+            echo "✅ matplotlib is installed"
+          else
+            echo "❌ matplotlib is NOT installed"
+          fi
