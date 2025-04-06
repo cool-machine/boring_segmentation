@@ -77,6 +77,11 @@ jobs:
         with:
           name: python-app  
       
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
       - name: Extract zip file
         run: |
           unzip release.zip
@@ -92,10 +97,20 @@ jobs:
           
           echo "==== Contents of api/requirements.txt ===="
           cat api/requirements.txt
-        
+          
+      - name: Setup Python virtual environment
+        run: |
+          echo "Creating and activating Python virtual environment..."
+          python -m venv .venv
+          source .venv/bin/activate
+          python --version
+          echo "Virtual environment created and activated"
+          
       - name: Install dependencies explicitly
         run: |
           echo "Installing dependencies from api/requirements.txt..."
+          source .venv/bin/activate
+          pip install --upgrade pip
           pip install -r api/requirements.txt
           echo "Installed packages:"
           pip freeze
