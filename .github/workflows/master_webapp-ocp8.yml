@@ -7,7 +7,7 @@ name: Build and deploy Python app to Azure Web App - webapp-ocp8
 on:
   push:
     branches:
-      - master
+      - azure-deployment
   workflow_dispatch:
 
 jobs:
