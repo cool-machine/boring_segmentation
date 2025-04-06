@@ -36,19 +36,13 @@ jobs:
       - name: Verify requirements.txt exists
         run: |
             ls -l ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt
+
       - name: Install dependencies
         run: |
             echo "Installing dependencies from ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt..."
             pip install -r ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt || exit 1
 
-      - name: Install dependencies
-        run: |
-            pip install -r ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt
-  
-      - name: Verify installed packages
-        run: |
-            pip freeze
-  
+
       - name: Zip artifact for deployment
         run: |
             zip release.zip ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/* -r -x "venv/*"
@@ -65,6 +59,7 @@ jobs:
           path: |
             release.zip
             !venv/
+            
       - name: Verify contents of release.zip
         run: |
             unzip -l release.zip
