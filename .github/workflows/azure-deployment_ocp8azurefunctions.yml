@@ -76,6 +76,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app  
+      
+      - name: Extract zip file
+        run: |
+          unzip release.zip
+          ls -la
         
       - name: Login to Azure
         uses: azure/login@v2
