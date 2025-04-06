@@ -1,3 +1,5 @@
+.vscode/
+.funcignore
 .env*
 .aml
 testinn/
@@ -28,3 +30,5 @@ api/local.settings.json
 
 # Explicitly don't ignore streamlit_run.py
 !streamlit_run.py
+
+.python_packages
